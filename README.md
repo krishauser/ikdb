@@ -2,6 +2,7 @@
 # version 0.1 #
 
 Kris Hauser
+
 Duke University
 
 5/15/2016
@@ -89,37 +90,39 @@ usually very fast.
 The easiest way to start is to use the ManagedIKDatabase class.  Code for running a 
 persistently running, automatically learning IKDB is as follows:
 
-> import ikdb
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+import ikdb
 >
-> world = WorldModel()
-> #TODO: load the robot or world file that you will be using
-> world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
-> functionfactory.registerDefaultFunctions()
-> functionfactory.registerCollisionFunction(world)
-> functionfactory.registerJointRangeCostFunction(world.robot(0))
-> 
-> #create the IKDB, with optional folder to save in
-> db = ManagedIKDatabase(world.robot(0),###[folder]###)
-> #optional: start the background thread.  It will automatically learn
-> #a database as it runs.  If you don't start it, then IKDB will learn
-> #only from the examples that you give it.
-> db.startBackgroundLoop()
-> while (True):
-> 	#generate a new problem
->     problem = IKProblem()
->     #TODO: make a list of Klamp't IKObjective objects, called objectives
->     for obj in objectives:
->     	problem.addConstraint(objective)
->     #these ensure collision freeness and penalize proximity to joint limits
->     problem.setFeasibilityTest('collisionFree',None)
->     problem.setCostFunction('jointRangeCost',None)
-> 
->     #run the solver
->     soln = db.solve(problem)
->     if soln is not None:
->         print "Got a solution",soln
-> #this is not strictly necessary, but you may want to do it just to be nice...
-> db.stopBackgroundLoop()
+world = WorldModel()
+#TODO: load the robot or world file that you will be using
+world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
+functionfactory.registerDefaultFunctions()
+functionfactory.registerCollisionFunction(world)
+functionfactory.registerJointRangeCostFunction(world.robot(0))
+
+#create the IKDB, with optional folder to save in
+db = ManagedIKDatabase(world.robot(0),###[folder]###)
+#optional: start the background thread.  It will automatically learn
+#a database as it runs.  If you don't start it, then IKDB will learn
+#only from the examples that you give it.
+db.startBackgroundLoop()
+while (True):
+	#generate a new problem
+    problem = IKProblem()
+    #TODO: make a list of Klamp't IKObjective objects, called objectives
+    for obj in objectives:
+    	problem.addConstraint(objective)
+    #these ensure collision freeness and penalize proximity to joint limits
+    problem.setFeasibilityTest('collisionFree',None)
+    problem.setCostFunction('jointRangeCost',None)
+
+    #run the solver
+    soln = db.solve(problem)
+    if soln is not None:
+        print "Got a solution",soln
+#this is not strictly necessary, but you may want to do it just to be nice...
+db.stopBackgroundLoop()
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ManagedIKDatabase will keep learning and periodically saving to disk, and the
 learned database will be loaded up again next time you start the program.
@@ -132,10 +135,12 @@ The ManagedIKDatabase class automatically populates one or more IKDatabase objec
 determines feature spaces from the IKProblems that you generate.  Doing this dynamically does 
 use a little bit of overhead.  Instead, if you are solving a group of IKProblems that have
 the same characteristics, it is a bit faster to call
->   sub_db = db.getDatabase(problem[0])
->   db.solveWithDatabase(problem[0],sub_db)
->   ...
->   db.solveWithDatabase(problem[N],sub_db)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  sub_db = db.getDatabase(problem[0])
+  db.solveWithDatabase(problem[0],sub_db)
+  ...
+  db.solveWithDatabase(problem[N],sub_db)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Note that this needs to be done AFTER database training.
 
 You can also generate and evaluate
@@ -161,16 +166,22 @@ this functionality.  Perhaps the easiest way to learn how to use it is through a
 
 Consider a simple cost function penalizing the third joint's deviation from 0.5:
 
->   def my_simple_cost_fn(q):
-> 	return (q[2] - 0.5) ** 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  def my_simple_cost_fn(q):
+	return (q[2] - 0.5) ** 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To register this, call:
 
->    functionfactory.registerFunction('my_cost',my_simple_cost_fn,'q')
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   functionfactory.registerFunction('my_cost',my_simple_cost_fn,'q')
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now it is ready to use in your IKProblem by calling
 
->   problem.setCostFunction('my_cost',None)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  problem.setCostFunction('my_cost',None)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 where the second argument tells the problem that your function takes no arguments
 except for q. 
@@ -178,16 +189,22 @@ except for q.
 For functions that take arguments, like penalization from some start configuration, you
 can easily add them to the definition, and IKDB will take care of them automatically.
 
->   def difference_cost_function(q,qref):
-> 	return sum((a - b) ** 2 for (a,b) in q,qref)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  def difference_cost_function(q,qref):
+	return sum((a - b) ** 2 for (a,b) in q,qref)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To register this, call:
 
->    functionfactory.registerFunction('diff',difference_cost_function,'q')
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   functionfactory.registerFunction('diff',difference_cost_function,'q')
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now, you can dynamically define a reference configuration in your IKProblem as follows
 
->   problem.setCostFunction('diff',[some_qref])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  problem.setCostFunction('diff',[some_qref])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If some_qref varies, then it will be determined to be part of the problem feature space.
 
