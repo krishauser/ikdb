@@ -243,6 +243,7 @@ the hood, read on.
 
 A simple problem with two IK objectives and no cost function will be defined in JSON format
 like this:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 {
   type:"IKProblem",
   objectives:[
@@ -264,6 +265,7 @@ like this:
     }
   ]
 }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each feature is a path through this hierarchical data structure.  That is, it is a list
 of indices that will be traversed down the hierarchy.  As an example, if you wish toindicate
