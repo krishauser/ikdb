@@ -1,5 +1,5 @@
 # Inverse Kinematics Database (IKDB) Library #
-# version 0.1 #
+### version 0.1 ###
 
 Kris Hauser
 
@@ -92,7 +92,7 @@ persistently running, automatically learning IKDB is as follows:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import ikdb
->
+
 world = WorldModel()
 #TODO: load the robot or world file that you will be using
 world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
