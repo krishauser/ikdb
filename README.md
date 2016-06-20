@@ -87,8 +87,48 @@ usually very fast.
 
 ### Quick start ###
 
-The easiest way to start is to use the ManagedIKDatabase class.  Code for running a 
-persistently running, automatically learning IKDB is as follows:
+We have three ways of interacting with the IKDB module, listed in increasing
+order of complexity and power: 
+- simplified Klampt ik module API replacement interface
+- automatically managed database
+- manually managed databases
+
+The easiest way to start is to use the ikdb module as an almost drop-in
+replacement for the Klamp't ik module.  All of the functions of the ik API (objective,
+solve, solve_nearby, etc) are duplicated in ikdb. Code for running a background running,
+automatically learning IKDB is as follows:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+import ikdb
+
+world = WorldModel()
+#TODO: load the robot or world file that you will be using
+world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
+functionfactory.registerDefaultFunctions()
+functionfactory.registerCollisionFunction(world)
+functionfactory.registerJointRangeCostFunction(world.robot(0))
+
+while (True):
+  #generate a new problem
+  #TODO: make a list of Klamp't IKObjective objects, called objectives
+
+  #run the solver
+  soln = ikdb.solve(problem,activeDofs=None,feasibilityCheck='collisionFree',costFunction='jointRangeCost')
+  if soln is not None:
+      print "Got a solution",soln
+
+#if you want to auto-populate the database, run the following lines:
+time.sleep(600)
+ikdb.flush()
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please consult the Klamp't IK tutorial http://motion.pratt.duke.edu/klampt/tutorial_ik.html or
+the klampt.ik module documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/ik_8py.html
+for more information about how to set up these objectives.
+
+The second easiest way to start is to use the ManagedIKDatabase class.  Here
+you get to configure the folder in which the solver saves its database, control
+the background loop, etc. Code is as follows:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import ikdb
@@ -126,10 +166,6 @@ db.stopBackgroundLoop()
 
 The ManagedIKDatabase will keep learning and periodically saving to disk, and the
 learned database will be loaded up again next time you start the program.
-
-Please consult the Klamp't IK tutorial http://motion.pratt.duke.edu/klampt/tutorial_ik.html or
-the klampt.ik module documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/ik_8py.html
-for more information about how to set up these objectives.
 
 The ManagedIKDatabase class automatically populates one or more IKDatabase objects and automatically
 determines feature spaces from the IKProblems that you generate.  Doing this dynamically does 
@@ -295,6 +331,8 @@ which will be smart and provide a length 6 feature vector for this problem.
 ikdbtest.py: conducts training and performance testing of the method
 ikdbtest2.py: trains a database from dynamically-defined IK problems in a visualization
   GUI (requires PyOpenGL) 
+ikdbtest3.py: shows the use of the simplified API that duplicates the Klamp't ik module
+  API.
 
 Examples:
 
@@ -309,6 +347,9 @@ Examples:
 
 >   (visualization and background training)
 >   python ikdbtest2.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
+
+>   (simplified interface and background training)
+>   python ikdbtest3.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 ## 5. Version history ##
 

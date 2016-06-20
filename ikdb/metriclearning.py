@@ -6,6 +6,8 @@ def mahalanobis_distance(u,v,A):
 
 def mahalanobis_distance2(u,v,A):
     z = u-v
+    if A is None:
+        return np.dot(z,z)
     return np.dot(z.T,np.dot(A,z))
 
 

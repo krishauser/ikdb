@@ -314,7 +314,7 @@ class IKDatabase:
             if len(self.problems) > 0: return self.problems[index]
             elif len(self.problemFeatures) > 0:
                 if index < 0 or index >= len(self.problemFeatures):
-                    print index,len(self.problemFeatures)
+                    print "Going to abort... data",index,len(self.problemFeatures)
                 assert index >= 0 and index < len(self.problemFeatures)
                 return featuresToIkProblem(self.ikTemplate,self.featureNames,self.problemFeatures[index])
             else:
@@ -1697,13 +1697,13 @@ class ManagedIKDatabase(MultiIKDatabase):
 
     def onSolveFailure(self,policy,db,problem):
         if policy == MultiIKDatabase.POLICY_RAW:
-            print "Raw solve fail"
+            print "IKDB: Raw solve fail"
             if self.size < self.maxSize:
                 self.add(db,problem,None)
         elif policy == MultiIKDatabase.POLICY_PREDICT:
             if self.backburnerEnabled:
                 with self.lock:
-                    print "Adding to backburner..."
+                    print "IKDB: Adding to backburner..."
                     if len(self.backburner) > 100:
                         del self.backburner[random.randint(0,len(self.backburner)-1)]
                     self.backburner.append((problem.toJson(),None))
@@ -1720,7 +1720,7 @@ class ManagedIKDatabase(MultiIKDatabase):
                     self.backburner.append((problem.toJson(),solution[0]))
                     self.backburnerChanged = True
         elif policy == MultiIKDatabase.POLICY_RAW:
-            print "Raw solve success"
+            print "IKDB: Raw solve success"
             if self.size < self.maxSize:
                 self.add(db,problem,solution)
         elif (policy == MultiIKDatabase.POLICY_ADAPT or policy == MultiIKDatabase.POLICY_CURRENT_OR_ADAPT) and solution[1] > 0:
@@ -1916,3 +1916,120 @@ class MultiIKDBTester (IKTestSet):
                 raise RuntimeError("Ground truth labels aren't available...")
         print "Feasibility prediction %d-NN: precision %f, recall %f"%(numQueries,float(tp)/max(1,fp+tp),float(tp)/max(1,fn+tp))
         print "  Prediction time",predictionTime
+
+
+
+
+#begin klampt ik module API overloads
+global _masters
+_masters = {}
+
+def _start_master(robot):
+    global _masters
+    if robot.getName() not in _masters:
+        _masters[robot.getName()] = ManagedIKDatabase(robot)
+        _masters[robot.getName()].startBackgroundLoop()
+
+def objective(*args,**kwargs):
+    """Duplicate of Klamp't ik module API"""
+    return ik.objective(*args,**kwargs)
+
+def fixed_objective(*args,**kwargs):
+    """Duplicate of Klamp't ik module API"""
+    return ik.fixed_objective(*args,**kwargs)
+
+def objects(objectives):
+    """Duplicate of Klamp't ik module API"""
+    return ik.objects(objectives)    
+
+def solver(objectives):
+    """Duplicate of Klamp't ik module API"""
+    return ik.solver(objectives)    
+
+def residual(objectives):
+    """Duplicate of Klamp't ik module API"""
+    return ik.residual(objectives)
+
+def jacobian(objectives):
+    """Duplicate of Klamp't ik module API"""
+    return ik.jacobian(objectives)
+
+def solve_global(objectives,iters=1000,tol=1e-3,activeDofs=None,feasibilityCheck=None,costFunction=None):
+    """Solves the IK problem given by the objectives.  Optionally can take a feasibility check
+    and a cost function. 
+
+    This will start / use an IK database for the given problem.
+
+    feasibilityCheck and costFunction, if given, must be names of functions defined using the API in
+    functionfactory.py.
+    """
+    global _masters
+    if not hasattr(objectives,'__iter__'):
+        objectives = [objectives]
+    robot = objectives[0].robot
+    _start_master(robot)
+    p = IKProblem(*objectives)
+    if activeDofs != None:
+        p.setActiveDofs(activeDofs)
+    if feasibilityCheck != None:
+        p.setFeasibilityTest(feasibilityCheck,[])
+    if costFunction != None:
+        p.setCostFunction(costFunction,[])
+    res = _masters[robot.getName()].solve(p)
+    if res is not None:
+        return res
+    return None
+
+
+def solve(objectives,iters=1000,tol=1e-3,activeDofs=None,feasibilityCheck=None,costFunction=None):
+    """Solves the IK problem given by the objectives.  Optionally can take a feasibility check
+    and a cost function. 
+
+    This will start / use an IK database for the given problem.
+
+    feasibilityCheck and costFunction, if given, must be names of functions defined using the API in
+    functionfactory.py.
+    """
+    return solve_global(objectives,iters,tol,activeDofs,feasibilityCheck,costFunction)
+
+def solve_nearby(objectives,maxDeviation,iters=1000,tol=1e-3,activeDofs=None,feasibilityCheck=None,costFunction=None):
+    """Solves the local IK problem given by the objectives.  Optionally can take a feasibility check
+    and a cost function. 
+
+    This will start / use an IK database for the given problem.
+
+    feasibilityCheck and costFunction, if given, must be names of functions defined using the API in
+    functionfactory.py.
+    """
+    global _masters
+    if not hasattr(objectives,'__iter__'):
+        objectives = [objectives]
+    robot = objectives[0].robot
+    _start_master(robot)
+    p = IKProblem(objectives)
+    if activeDofs != None:
+        p.setActiveDofs(activeDofs)
+    if feasibilityCheck != None:
+        p.setFeasibilityTest(feasibilityCheck,[])
+    if costFunction != None:
+        p.setCostFunction(costFunction,[])
+    q = robot.getConfig()
+    qmin,qmax = robot.getJointLimits()
+    for d in range(robot.numLinks()):
+        qmin[d] = max(qmin[d],q[d]-maxDeviation)
+        qmax[d] = min(qmax[d],q[d]+maxDeviation)
+    p.setJointLimits(qmin,qmax)
+
+    res = _masters[robot].solve(p)
+    if res is not None:
+        assert len(res)==2
+        return res[0]
+    return None
+
+def flush():
+    """Forces a flush of the databases"""
+    global _masters
+    for (k,v) in _masters.iteritems():
+        v.flush()
+
+
