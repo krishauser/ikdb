@@ -167,6 +167,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
         link  = robot.link(link)
         ikobjectivejson['link'] = link.index
         ikobjectivejson['type'] = 'IKObjective'
+        ikobjectivejson['localPosition'] = ns.localpoint
         obj = loader.fromJson(ikobjectivejson)
         obj.robot = robot
         objectives.append(obj)
