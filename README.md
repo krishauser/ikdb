@@ -37,7 +37,7 @@ Optional packages:
   PyOpt (http://www.pyopt.com), a local optimization package 
   DIRECT (https://pypi.python.org/pypi/DIRECT/), another global optimizer used
      for comparison.  Testing indicates performance is not competitive.
-  PyOpenGL, for visualization in ikdbtest2.py
+  PyOpenGL, for visualization in ikdbtest_gl.py
 
 ## 3. Concepts ##
 
@@ -108,10 +108,15 @@ functionfactory.registerDefaultFunctions()
 functionfactory.registerCollisionFunction(world)
 functionfactory.registerJointRangeCostFunction(world.robot(0))
 
+robot = world.robot(0)
 while (True):
   #generate a new problem
-  #TODO: make a list of Klamp't IKObjective objects, called objectives
-
+  #TODO: add Klamp't IKObjective objects to the list of objectives
+  problem = []
+  #problem.append(ik.objective(robot.link(...),...))
+  #problem.append(ik.objective(robot.link(...),...))
+  #...
+  
   #run the solver
   soln = ikdb.solve(problem,activeDofs=None,feasibilityCheck='collisionFree',costFunction='jointRangeCost')
   if soln is not None:
@@ -153,8 +158,8 @@ while (True):
     for obj in objectives:
     	problem.addConstraint(objective)
     #these ensure collision freeness and penalize proximity to joint limits
-    problem.setFeasibilityTest('collisionFree',None)
-    problem.setCostFunction('jointRangeCost',None)
+    problem.setFeasibilityTest('collisionFree')
+    problem.setCostFunction('jointRangeCost')
 
     #run the solver
     soln = db.solve(problem)
@@ -220,7 +225,7 @@ Now it is ready to use in your IKProblem by calling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 where the second argument tells the problem that your function takes no arguments
-except for q. 
+except for q.  This is assumed by default, so you can eliminate the None argument.
 
 For functions that take arguments, like penalization from some start configuration, you
 can easily add them to the definition, and IKDB will take care of them automatically.
@@ -239,7 +244,8 @@ To register this, call:
 Now, you can dynamically define a reference configuration in your IKProblem as follows
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  problem.setCostFunction('diff',[some_qref])
+  some_qref = [...] #set some reference configuration
+  problem.setCostFunction('diff',some_qref)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If some_qref varies, then it will be determined to be part of the problem feature space.
@@ -318,38 +324,38 @@ or the shortcut
 
 >   [('objectives',0,'endPosition')]
 
-which will be smart about treating the 3-list as 3 separate features.
+In this latter case, the feature mapper will be smart about treating the 3-list as 3 separate features.
 
 To treat both endpoints as features you can use the mapping:
 
 >   [('objectives',0,'endPosition'),('objectives',1,'endPosition')]
 
-which will be smart and provide a length 6 feature vector for this problem.
+and the feature mapping will be smart and provide a length 6 feature vector for this problem.
 
 ## 4. Test programs ##
 
-ikdbtest.py: conducts training and performance testing of the method
-ikdbtest2.py: trains a database from dynamically-defined IK problems in a visualization
-  GUI (requires PyOpenGL) 
-ikdbtest3.py: shows the use of the simplified API that duplicates the Klamp't ik module
+ikdbtest_simple.py: shows the use of the simplified API that duplicates the Klamp't ik module
   API.
+ikdbtest_console.py: conducts training and performance testing of the method
+ikdbtest_gl.py: trains a database from dynamically-defined IK problems in a visualization
+  GUI (requires PyOpenGL) 
 
 Examples:
 
 >   (basic test)
->   python ikdbtest.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob 
+>   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob 
 
 >   (tests against random-restart)
->   python ikdbtest.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob -k 1 -k 5 -k 10 --RR 1 --RR 10 --RR 100
+>   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob -k 1 -k 5 -k 10 --RR 1 --RR 10 --RR 100
 
 >   (two links constrained)
->   python ikdbtest.py --train 100000 --test 1000 --link left_gripper --link right_gripper --robot [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_console.py --train 100000 --test 1000 --link left_gripper --link right_gripper --robot [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 >   (visualization and background training)
->   python ikdbtest2.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_gl.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 >   (simplified interface and background training)
->   python ikdbtest3.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_simple.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 ## 5. Version history ##
 

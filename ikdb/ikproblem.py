@@ -52,7 +52,7 @@ class IKProblem:
     def addConstraint(self,obj):
         """An alias to addObjective. """
         self.addObjective(obj)
-    def setCostFunction(self,type,args):
+    def setCostFunction(self,type,args=None):
         """Sets the current cost function to a function of type 'type' with
         parameters 'args'. See the documentaiton of the function registry to
         see how to build your own dynamically instantiable functions."""
@@ -60,7 +60,7 @@ class IKProblem:
         if self.costFunction is None:
             raise ValueError("Invalid function type and/or args when setting cost function, must be registered with function registry")
         self.costFunctionDescription = {'type':type,'args':args}
-    def setFeasibilityTest(self,type,args):
+    def setFeasibilityTest(self,type,args=None):
         """Sets the feasibility test to a function of type 'type' with parameters
         'args'.  See the documentation of the function registry to see how
         to build your own dynamically instantiable functions."""
@@ -68,7 +68,7 @@ class IKProblem:
         if self.feasibilityTest is None:
             raise ValueError("Invalid function type and/or args when setting feasibility test, must be registered with function registry")
         self.feasibilityTestDescription = {'type':type,'args':args}
-    def addFeasibilityTest(self,type,args):
+    def addFeasibilityTest(self,type,args=None):
         """Adds an additional feasibility test.  See setFeasibilityTest for 
         documentation of these parameters."""
         if self.feasibilityTest is None:

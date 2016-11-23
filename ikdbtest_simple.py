@@ -87,7 +87,8 @@ if __name__=='__main__':
     run_tests_main(pointiktemplate2,pointikfeatures)
     run_tests_main(pointiktemplate3,pointikfeatures)
 
-    #wait for a minute before quitting to allow the DB to continue generating
+    #wait for a minute before quitting to allow the DB to generate examples int he background
     time.sleep(60)
+    #this saves the database to disk
     ikdb.flush()
 
