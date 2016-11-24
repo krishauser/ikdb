@@ -1,11 +1,11 @@
 # Inverse Kinematics Database (IKDB) Library #
-### version 0.1 ###
+### version 0.2 ###
 
 Kris Hauser
 
 Duke University
 
-5/15/2016
+11/24/2016
 
 ## 1. Purpose ##
 
@@ -15,7 +15,8 @@ the problem that existing numerical solutions for IK use local optimization, whi
 tends to fall into local minima due to joint limits, and they do not properly take
 collision avoidance into account.  The approach taken by IKDB is to pre-train a 
 (usually large) database of globally-optimized solutions offline, and then adapt them
-online using local optimization.
+online using local optimization.  With a properly trained database, the resulting IK
+solver is orders of magnitude faster than standard global optimization techniques.
 
 It also provides functionality to learn the database in the background.
 
@@ -23,6 +24,7 @@ It accompanies the paper:
 
 Kris Hauser, Learning the Problem-Optimum Map: Analysis and Application
 to Global Optimization in Robotics. arXiv:1605.04636, http://arxiv.org/abs/1605.04636
+[Also to appear in IEEE Transactions on Robotics]
 
 IKDB is written in a Python front end for customizability, while the solvers used
 by its dependencies use C++ and Fortran back ends for speed.
@@ -32,12 +34,15 @@ by its dependencies use C++ and Fortran back ends for speed.
 
 IKDB requires Python and the following Python packages
 Scipy
-Klampt Python API (http://klampt.org)
+Klampt Python API (http://klampt.org) either version 0.6.X or 0.7+
 Optional packages:
   PyOpt (http://www.pyopt.com), a local optimization package 
   DIRECT (https://pypi.python.org/pypi/DIRECT/), another global optimizer used
      for comparison.  Testing indicates performance is not competitive.
   PyOpenGL, for visualization in ikdbtest_gl.py
+
+To install Klampt, please follow the installation tutorial for your system at
+http://motion.pratt.duke.edu/klampt/tutorial_install.html
 
 ## 3. Concepts ##
 
@@ -209,7 +214,7 @@ Consider a simple cost function penalizing the third joint's deviation from 0.5:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   def my_simple_cost_fn(q):
-	return (q[2] - 0.5) ** 2
+	  return (q[2] - 0.5) ** 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To register this, call:
@@ -232,7 +237,7 @@ can easily add them to the definition, and IKDB will take care of them automatic
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   def difference_cost_function(q,qref):
-	return sum((a - b) ** 2 for (a,b) in q,qref)
+	  return sum((a - b) ** 2 for (a,b) in q,qref)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To register this, call:
@@ -334,10 +339,10 @@ and the feature mapping will be smart and provide a length 6 feature vector for 
 
 ## 4. Test programs ##
 
-ikdbtest_simple.py: shows the use of the simplified API that duplicates the Klamp't ik module
+* ikdbtest_simple.py: shows the use of the simplified API that duplicates the Klamp't ik module
   API.
-ikdbtest_console.py: conducts training and performance testing of the method
-ikdbtest_gl.py: trains a database from dynamically-defined IK problems in a visualization
+* ikdbtest_console.py: conducts training and performance testing of the method
+* ikdbtest_gl.py: trains a database from dynamically-defined IK problems in a visualization
   GUI (requires PyOpenGL) 
 
 Examples:
@@ -360,3 +365,4 @@ Examples:
 ## 5. Version history ##
 
 - 0.1 (5/16/2016) - initial release
+- 0.2 (11/24/2016) - revision for TRO release.  Added more documentation, ability to handle soft constraints, and Klampt 0.7 support.
