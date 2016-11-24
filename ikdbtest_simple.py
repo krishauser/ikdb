@@ -1,7 +1,10 @@
 from klampt import *
 from ikdb import ikdb
 from ikdb import functionfactory
-from klampt import loader
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    from klampt.io import loader
+else:
+    from klampt import loader
 import sys
 import math
 import random

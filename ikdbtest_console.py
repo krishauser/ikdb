@@ -3,7 +3,12 @@ from ikdb import IKDBTester,MultiIKDBTester
 from ikdb import functionfactory
 from ikdb.utils import mkdir_p
 from klampt import *
-from klampt import ik,loader
+import pkg_resources
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    from klampt.model import ik
+    from klampt.io import loader
+else:
+    from klampt import ik,loader
 import numpy as np
 import sys
 import random
