@@ -1,9 +1,32 @@
 from ikdb import *
 from ikdb import functionfactory
 from klampt import *
-from klampt import ik
-from klampt.glrobotprogram import *
-from klampt import PointPoser,TransformPoser
+import pkg_resources
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    NEW_KLAMPT = True
+    from klampt.model import ik
+    from klampt.io import loader
+    from klampt.vis.glrobotprogram import *
+    from klampt.vis.glcommon import *
+    from klampt import PointPoser,TransformPoser
+    from klampt.model import collide
+    #patch to Klamp't 0.6.X
+    class GLWidgetProgram(GLPluginProgram):
+        def __init__(self,world,name):
+            GLPluginProgram.__init__(self,name)
+            self.widgetPlugin = GLWidgetPlugin()
+            self.setPlugin(self.widgetPlugin)
+            self.widgetMaster = self.widgetPlugin.klamptwidgetmaster
+            self.world = world
+        def display(self):
+            GLPluginProgram.display(self)
+            self.world.drawGL()
+else:
+    NEW_KLAMPT = False
+    from klampt import ik,loader
+    from klampt.glrobotprogram import *
+    from klampt import PointPoser,TransformPoser
+    from klampt import robotcollide as collide
 import sys
 import traceback
 import numpy as np
@@ -17,7 +40,7 @@ class IKDBVisualTester(GLWidgetProgram):
     def __init__(self,visWorld,planningWorld,name="IK Database visual tester"):
         GLWidgetProgram.__init__(self,visWorld,name)
         self.planningWorld = planningWorld
-        self.collider = robotcollide.WorldCollider(visWorld)
+        self.collider = collide.WorldCollider(visWorld)
         self.ikdb = ManagedIKDatabase(planningWorld.robot(0))
         self.ikWidgets = []
         self.ikIndices = []
@@ -36,7 +59,12 @@ class IKDBVisualTester(GLWidgetProgram):
         #you right click
         GLWidgetProgram.mousefunc(self,button,state,x,y)
         self.reSolve = False
-        if not self.draggingWidget and button == 2 and state==0:
+        dragging = False
+        if NEW_KLAMPT:
+            dragging = self.widgetPlugin.klamptwidgetdragging
+        else:
+            dragging = self.draggingWidget
+        if not dragging and button == 2 and state==0:
             #down
             clicked = self.click_world(x,y)
             if clicked is not None and isinstance(clicked[0],RobotModelLink):
@@ -52,9 +80,16 @@ class IKDBVisualTester(GLWidgetProgram):
                 self.refresh()
             return
         
-    def motionfunc(self,x,y):
-        GLWidgetProgram.motionfunc(self,x,y)
-        if self.draggingWidget:
+    #the dx,dy arguments are needed to be cross-compatible between 0.6.x and 0.7
+    def motionfunc(self,x,y,dx=0,dy=0):
+        dragging = False
+        if NEW_KLAMPT:
+            GLWidgetProgram.motionfunc(self,x,y,dx,dy)
+            dragging = self.widgetPlugin.klamptwidgetdragging
+        else:
+            GLWidgetProgram.motionfunc(self,x,y)
+            dragging = self.draggingWidget
+        if dragging:
             #update all the IK objectives
             for i in range(len(self.ikWidgets)):
                 index = self.ikIndices[i]
@@ -90,6 +125,7 @@ class IKDBVisualTester(GLWidgetProgram):
             print 'B: starts / stops the background thread'
             print 'v: toggles display of the database'
             print 'c: toggles continuous re-solving of IK constraint its as being moved'
+            print 'o: toggles soft / hard IK constraints'
         elif c==' ':
             self.planningWorld.robot(0).setConfig(self.currentConfig)
             soln = self.ikdb.solve(self.ikProblem)
@@ -141,7 +177,8 @@ class IKDBVisualTester(GLWidgetProgram):
             self.drawDb = not self.drawDb
         elif c=='c':
             self.continuous = not self.continuous
-
+        elif c == 'o':
+            self.ikProblem.setSoftObjectives(not self.ikProblem.softObjectives)
 
     def display(self):
         if self.reSolve:
@@ -202,7 +239,10 @@ class IKDBVisualTester(GLWidgetProgram):
 
         If no point is clicked, returns None."""
         #get the viewport ray
-        (s,d) = self.click_ray(x,y)
+        if NEW_KLAMPT:
+            (s,d) = self.view.click_ray(x,y)
+        else:
+            (s,d) = self.click_ray(x,y)
 
         #run the collision tests
         collided = []
