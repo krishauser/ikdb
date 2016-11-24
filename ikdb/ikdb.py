@@ -1,5 +1,9 @@
-from klampt import ik
-from klampt import vectorops
+import pkg_resources
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    from klampt.model import ik
+    from klampt.math import vectorops
+else:
+    from klampt import ik,vectorops
 import random
 import numpy as np
 import time
@@ -278,15 +282,38 @@ class IKDatabase:
         """Sets the featureRanges variable from the ranges of feasible
         solutions"""
         with self.lock:
-            feasfeatures = [p for p,s in zip(self.problemFeatures,self.solutions) if s is not None]
-            if len(feasfeatures)==0:
-                print "IKDatabase.autoSetFeatureRanges(): no feasible solutions"
-                #can't set
-                return
-            feasfeatures = np.array(feasfeatures)
-            fmax = np.amax(feasfeatures,axis=0).tolist()
-            fmin = np.amin(feasfeatures,axis=0).tolist()
-            self.featureRanges = zip(fmin,fmax)
+            if self.ikTemplate.get('softObjectives',False):
+                fmin,fmax = None,None
+                for p,s in zip(self.problemFeatures,self.solutions):
+                    if s is None: continue
+                    if fmin == None or any(v < a or v > b for (v,a,b) in zip(p,fmin,fmax)):
+                        problem = featuresToIkProblem(self.ikTemplate,self.featureNames,p)
+                        self.robot.setConfig(s)
+                        resid = problem.constraintResidual(self.robot)
+                        #TODO: get the actual tolerance of successful solves?
+                        tol = 1e-3
+                        if all(abs(v) < tol for v in resid):
+                            if fmin == None:
+                                fmin = p[:]
+                                fmax = p[:]
+                            else:
+                                for i,(v,a,b) in enumerate(zip(p,fmin,fmax)):
+                                    if v < a:
+                                        fmin[i] = v
+                                    elif v > b:
+                                        fmax[i] = v
+                print "Feature ranges set to",fmin,fmax
+                self.featureRanges = zip(fmin,fmax)
+            else:
+                feasfeatures = [p for p,s in zip(self.problemFeatures,self.solutions) if s is not None]
+                if len(feasfeatures)==0:
+                    print "IKDatabase.autoSetFeatureRanges(): no feasible solutions"
+                    #can't set
+                    return
+                feasfeatures = np.array(feasfeatures)
+                fmax = np.amax(feasfeatures,axis=0).tolist()
+                fmin = np.amin(feasfeatures,axis=0).tolist()
+                self.featureRanges = zip(fmin,fmax)
 
     def sampleRandomProblem(self,featureExpandAmountRel=0,featureExpandAmountAbs=0):
         """Samples a random problem.  The default implementation uses

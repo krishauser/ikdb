@@ -1,4 +1,10 @@
-from klampt import vectorops,WorldModel
+import pkg_resources
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    from klampt.math import vectorops
+    from klampt.model import collide
+else:
+    from klampt import vectorops
+    from klampt import robotcollide as collide
 import numpy as np
 
 _functionFactories = dict()
@@ -80,8 +86,7 @@ def registerDefaultFunctions():
     registerFunction('distanceSquared',distance_squared_L2)
 
 def registerCollisionFunction(world,name='collisionFree'):
-    from klampt import robotcollide
-    collider = robotcollide.WorldCollider(world)
+    collider = collide.WorldCollider(world)
     robot = world.robot(0)
     def collides(x):
         robot.setConfig(x)

@@ -1,6 +1,13 @@
-from klampt import ik,vectorops
-from klampt import IKObjective
-from klampt import loader
+import pkg_resources
+if pkg_resources.get_distribution('klampt').version >= '0.7':
+    from klampt.model import ik
+    from klampt.math import vectorops
+    from klampt import IKObjective
+    from klampt.io import loader
+else:
+    from klampt import ik,vectorops
+    from klampt import IKObjective
+    from klampt import loader
 import time
 import features
 import random
@@ -19,6 +26,30 @@ class IKSolverParams:
         self.globalMethod = globalMethod
         self.localMethod = localMethod
 
+def global_solve(optproblem,params=IKSolverParams(),seed=None):
+    """Globally solves a optimize.Problem instance with the given IKSolverParams.
+    Optionally takes a seed as well.
+    """
+    method = params.globalMethod
+    numIters = params.numIters
+    tol = params.tol
+    if params.globalMethod == 'random-restart':
+        #use the GlobalOptimize version of random restarts
+        assert params.localMethod is not None,"Need a localMethod for random-restart to work"
+        method = params.globalMethod + '.' + params.localMethod
+        numIters = [params.numRestarts,params.numIters]
+        optSolver = optimize.GlobalOptimizer(method)
+    elif params.localMethod is not None:
+        #do a sequential optimization
+        method = [params.globalMethod,params.localMethod]
+        #co-opt params.numRestarts for the number of outer iterations?
+        numIters = [params.numRestarts,params.numIters]
+    optSolver = optimize.GlobalOptimizer(method=method)
+    if seed:
+        optSolver.setSeed(seed)
+    (succ,res) = optSolver.solve(optProblem,numIters=numIters,tol=tol)
+    return (succ,res)
+
 class IKProblem:
     """Defines a generalized IK problem that can be saved/loaded from a JSON
     string.  It may have additional specifications of active DOF, feasibility
@@ -36,9 +67,18 @@ class IKProblem:
     #in function's, specify a third argument.  For example, if you call it q,
     #then use this option:
     functionfactory.registerFunction('funcName',function,'q')
+
+    If you would like to find the configuration *closest* to solving the IK
+    constraints, call setSoftObjectives().  In this case, solve will always
+    return a solution, as long as it finds one that passes the feasibility test.
+    The optimization method changes so that it 1) optimizes the IK residual norm, and
+    then 2) optimizes the cost function to maintain the residual norm at its
+    current value.  In other words, minimizing IK error is the first priority and
+    minimizing cost is the second priority.
     """
     def __init__(self,*ikgoals):
         self.objectives = list(ikgoals)
+        self.softObjectives = False
         self.activeDofs = None
         self.jointLimits = None
         self.costFunction = None
@@ -52,6 +92,11 @@ class IKProblem:
     def addConstraint(self,obj):
         """An alias to addObjective. """
         self.addObjective(obj)
+    def setSoftObjectives(self,enabled=True):
+        """Turns on soft IK solving.  This is the same as hard IK solving if all
+        constraints can be reached, but if the constraints cannot be reached, it will
+        """
+        self.softObjectives = enabled
     def setCostFunction(self,type,args=None):
         """Sets the current cost function to a function of type 'type' with
         parameters 'args'. See the documentaiton of the function registry to
@@ -125,6 +170,8 @@ class IKProblem:
         for obj in self.objectives:
             objectives.append(loader.toJson(obj))
         res['objectives'] = objectives
+        if self.softObjectives:
+            res['softObjectives'] = self.softObjectives
         if self.activeDofs is not None:
             res['activeDofs'] = self.activeDofs
         if self.jointLimits is not None:
@@ -142,6 +189,10 @@ class IKProblem:
         self.objectives = []
         for obj in object['objectives']:
             self.objectives.append(loader.fromJson(obj))
+        if 'softObjectives' in object:
+            self.softObjectives = object['softObjectives']
+        else:
+            self.softObjectives = False
         self.activeDofs = object.get('activeDofs',None)
         self.jointLimits = object.get('jointLimits',None)
         self.costFunctionDescription = object.get('costFunction',None)
@@ -246,47 +297,88 @@ class IKProblem:
                 optProblem.setFeasibilityTest(feasFunc)
             #optProblem is now ready to use
 
+            if self.softObjectives:
+                softOptProblem = optimize.Problem()
+                def costFunc(x):
+                    q = robot.getConfig()
+                    for d,v in zip(activeDofs,x):
+                        q[d] = v
+                    robot.setConfig(q)
+                    return vectorops.normSquared(solver.getResidual())*0.5
+                def costFuncGrad(x):
+                    q = robot.getConfig()
+                    for d,v in zip(activeDofs,x):
+                        q[d] = v
+                    robot.setConfig(q)
+                    return solver.getResidual()
+                if len(qmax) > 0:
+                    softOptProblem.setBounds([qmin[d] for d in activeDofs],[qmax[d] for d in activeDofs])
+                if self.feasibilityTest is not None:
+                    softOptProblem.setFeasibilityTest(feasFunc)
+                softOptProblem.setObjective(costFunc,costFuncGrad)
+                #softOptProblem is now ready to use
+
         if params.globalMethod is not None:
-            #do global optimization and return
-            method = params.globalMethod
-            numIters = params.numIters
-            tol = params.tol
-            if params.globalMethod == 'random-restart':
-                #use the GlobalOptimize version of random restarts
-                assert params.localMethod is not None,"Need a localMethod for random-restart to work"
-                method = params.globalMethod + '.' + params.localMethod
-                numIters = [params.numRestarts,params.numIters]
-                optSolver = optimize.GlobalOptimizer(method)
-            elif params.localMethod is not None:
-                #do a sequential optimization
-                method = [params.globalMethod,params.localMethod]
-                #co-opt params.numRestarts for the number of outer iterations?
-                numIters = [params.numRestarts,params.numIters]
-            optSolver = optimize.GlobalOptimizer(method=method)
             q = robot.getConfig()
             x0 = [q[d] for d in activeDofs]
-            optSolver.setSeed(x0)
-            (succ,res) = optSolver.solve(optProblem,numIters=numIters,tol=tol)
-            if succ:
-                q = robot.getConfig()
+            if self.softObjectives:
+                #globally optimize the soft objective function.  If 0 objective value is obtained, use equality constrained
+                #optProblem.  If 0 objective value is not obtained, constrain the residual norm-squared to be that value
+                (succ,res) = global_solve(softOptProblem,params,x0)
+                if not succ:
+                    print "Global soft optimize returned failure"
+                    return None
                 for d,v in zip(activeDofs,res):
                     q[d] = v
-                #check feasibility if desired
-                if self.feasibilityTest is not None and not self.feasibilityTest(q):
-                    print "Result from global optimize isn't feasible"
-                    return None
+                if self.costFunction is None:
+                    #no cost function, just return
+                    print "Global optimize succeeded! Cost",self.costFunction(q)
+                    return q
+                x0 = res
+                #now modify the constraint of optProblem
+                robot.setConfig(q)
+                residual = solver.getResidual()
+                if max(abs(v) for v in residual) < params.tol:
+                    #the constraint is satisfied, now just optimize cost
+                    pass
+                else:
+                    #the constraint is not satisfied, now use the residual as the constraint
+                    threshold = 0.5*vectorops.normSquared(residual)
+                    def inequality(x):
+                        q = robot.getConfig()
+                        for d,v in zip(activeDofs,x):
+                            q[d] = v
+                        robot.setConfig(q)
+                        return [vectorops.normSquared(solver.getResidual())*0.5 - threshold]
+                    def inequalityGrad(x):
+                        return [costFuncGrad(x)]
+                    optProblem.equalities = []
+                    optProblem.equalityGrads = []
+                    optProblem.addInequality(inequality,inequalityGrad)
+
+            #do global optimization of the cost function and return
+            (succ,res) = global_solve(optProblem,params,x0)
+            if not succ:
+                print "Global optimize returned failure"
+                return None
+            for d,v in zip(activeDofs,res):
+                q[d] = v
+            #check feasibility if desired
+            if self.feasibilityTest is not None and not self.feasibilityTest(q):
+                print "Result from global optimize isn't feasible"
+                return None
+            if not softObjectives:
                 if max(abs(v) for v in solver.getResidual()) > params.tol:
                     print "Result from global optimize doesn't satisfy tolerance.  Residual",vectorops.norm(solver.getResidual())
                     return None
-                #passed
-                print "Global optimize succeeded! Cost",self.costFunction(q)
-                return q
-            else:
-                print "Global optimize returned failure"
-                return None
+            #passed
+            print "Global optimize succeeded! Cost",self.costFunction(q)
+            return q                
 
         #DONT DO THIS... much faster to do newton solves first, then local optimize.
         if not postOptimize and params.localMethod is not None:
+            if self.softObjectives:
+                raise RuntimeError("Direct local optimization of soft objectives is not done yet")
             #random restart + local optimize
             optSolver = optimize.LocalOptimizer(method=params.localMethod)
             q = robot.getConfig()
@@ -326,11 +418,16 @@ class IKProblem:
             #random-restart newton-raphson
             best = None
             bestQuality = float('inf')
+            if self.softObjectives:
+                #quality is a tuple
+                bestQuality = bestQuality,bestQuality
+            quality = None
             for restart in xrange(params.numRestarts):
                 if time.time() - t0 > params.timeout:
                     return best
                 t0 = time.time()
-                if solver.solve(params.numIters,params.tol)[0]:
+                res,iters = solver.solve(params.numIters,params.tol)
+                if res or self.softObjectives:
                     q = robot.getConfig()
                     #check feasibility if desired
                     t0 = time.time()
@@ -349,19 +446,53 @@ class IKProblem:
                         else:
                             solver.sampleInitial()
                             continue
-                    if self.costFunction is None:
-                        #feasible
-                        return q
+                    if self.softObjectives:
+                        residual = solver.getResidual()
+                        ikerr = max(abs(v) for v in residual)
+                        if ikerr < params.tol:
+                            ikerr = 0
+                        else:
+                            #minimize squared error
+                            ikerr = vectorops.normSquared(residual)
+                        if self.costFunction is None:
+                            cost = 0
+                            if ikerr == 0:
+                                #feasible and no cost
+                                return q
+                        else:
+                            cost = self.costFunction(q)
+                        quality = ikerr,cost
                     else:
-                        #optimize
-                        quality = self.costFunction(q)
-                        if quality < bestQuality:
-                            best = q
-                            bestQuality = quality
+                        if self.costFunction is None:
+                            #feasible
+                            return q
+                        else:
+                            #optimize
+                            quality = self.costFunction(q)
+                    if quality < bestQuality:
+                        best = q
+                        bestQuality = quality
                 #sample a new ik seed
                 solver.sampleInitial()
         #post-optimize using local optimizer
         if postOptimize and best is not None and params.localMethod is not None:
+            if self.softObjectives:
+                robot.setConfig(best)
+                residual = solver.getResidual()
+                if max(abs(v) for v in residual) > params.tol:
+                    #the constraint is not satisfied, now use the residual as the constraint
+                    threshold = 0.5*vectorops.normSquared(residual)
+                    def inequality(x):
+                        q = robot.getConfig()
+                        for d,v in zip(activeDofs,x):
+                            q[d] = v
+                        robot.setConfig(q)
+                        return [vectorops.normSquared(solver.getResidual())*0.5 - threshold]
+                    def inequalityGrad(x):
+                        return [costFuncGrad(x)]
+                    optProblem.equalities = []
+                    optProblem.equalityGrads = []
+                    optProblem.addInequality(inequality,inequalityGrad)
             optSolver = optimize.LocalOptimizer(method=params.localMethod)
             x0 = [best[d] for d in activeDofs]
             optSolver.setSeed(x0)
