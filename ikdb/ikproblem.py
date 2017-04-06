@@ -416,6 +416,8 @@ class IKProblem:
                 optSolver.setSeed(x0)
         else:
             #random-restart newton-raphson
+            solver.setMaxIters(params.numIters)
+            solver.setTolerance(params.tol)
             best = None
             bestQuality = float('inf')
             if self.softObjectives:
@@ -426,7 +428,7 @@ class IKProblem:
                 if time.time() - t0 > params.timeout:
                     return best
                 t0 = time.time()
-                res,iters = solver.solve(params.numIters,params.tol)
+                res = solver.solve()
                 if res or self.softObjectives:
                     q = robot.getConfig()
                     #check feasibility if desired
@@ -474,6 +476,7 @@ class IKProblem:
                         bestQuality = quality
                 #sample a new ik seed
                 solver.sampleInitial()
+
         #post-optimize using local optimizer
         if postOptimize and best is not None and params.localMethod is not None:
             if self.softObjectives:
