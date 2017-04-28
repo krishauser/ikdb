@@ -84,10 +84,10 @@ class IKDBVisualTester(GLWidgetProgram):
     def motionfunc(self,x,y,dx=0,dy=0):
         dragging = False
         if NEW_KLAMPT:
-            GLWidgetProgram.motionfunc(self,x,y,dx,dy)
+            retval = GLWidgetProgram.motionfunc(self,x,y,dx,dy)
             dragging = self.widgetPlugin.klamptwidgetdragging
         else:
-            GLWidgetProgram.motionfunc(self,x,y)
+            retval = GLWidgetProgram.motionfunc(self,x,y)
             dragging = self.draggingWidget
         if dragging:
             #update all the IK objectives
@@ -111,6 +111,7 @@ class IKDBVisualTester(GLWidgetProgram):
                     #don't solve now, wait for refresh to process
                     if self.continuous and (Rnew,tnew) != (Rold,told):
                         self.reSolve = True
+        return retval
 
     def keyboardfunc(self,c,x,y):
         if c=='h':
