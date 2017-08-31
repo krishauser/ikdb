@@ -1,10 +1,12 @@
 import pkg_resources
 if pkg_resources.get_distribution('klampt').version >= '0.7':
+    NEW_KLAMPT = True
     from klampt.model import ik
     from klampt.math import vectorops
     from klampt import IKObjective
     from klampt.io import loader
 else:
+    NEW_KLAMPT = False
     from klampt import ik,vectorops
     from klampt import IKObjective
     from klampt import loader
@@ -266,16 +268,25 @@ class IKProblem:
                     q[d] = v
                 robot.setConfig(q)
                 return solver.getResidual()
-            def ikConstraintJac(x):
-                q = robot.getConfig()
-                for d,v in zip(activeDofs,x):
-                    q[d] = v
-                robot.setConfig(q)
-                Jikdofs = solver.getJacobian()
-                for i in ikActiveDofs:
-                    for j in xrange(len(Jactive)):
-                        Jactive[j][ikToActive[i]] = Jikdofs[j][i]
-                return Jactive
+            if NEW_KLAMPT:
+                def ikConstraintJac(x):
+                    q = robot.getConfig()
+                    for d,v in zip(activeDofs,x):
+                        q[d] = v
+                    robot.setConfig(q)
+                    return solver.getJacobian()
+            else:
+                #old version of Klamp't didn't compute the jacobian w.r.t. the active DOFS
+                def ikConstraintJac(x):
+                    q = robot.getConfig()
+                    for d,v in zip(activeDofs,x):
+                        q[d] = v
+                    robot.setConfig(q)
+                    Jikdofs = solver.getJacobian()
+                    for i in ikActiveDofs:
+                        for j in xrange(len(Jactive)):
+                            Jactive[j][ikToActive[i]] = Jikdofs[j][i]
+                    return Jactive
             def costFunc(x):
                 q = robot.getConfig()
                 for d,v in zip(activeDofs,x):
