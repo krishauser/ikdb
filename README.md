@@ -349,21 +349,26 @@ and the feature mapping will be smart and provide a length 6 feature vector for 
 * ikdbtest_gl.py: trains a database from dynamically-defined IK problems in a visualization
   GUI (requires PyOpenGL) 
 
-Examples:
+**Examples:**
 
->   (basic test)
+(basic test)
+
 >   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob 
 
->   (tests against random-restart)
+(tests against random-restart)
+
 >   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob -k 1 -k 5 -k 10 --RR 1 --RR 10 --RR 100
 
->   (two links constrained)
+(two links constrained)
+
 >   python ikdbtest_console.py --train 100000 --test 1000 --link left_gripper --link right_gripper --robot [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
->   (visualization and background training)
+(visualization and background training)
+
 >   python ikdbtest_gl.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
->   (simplified interface and background training)
+(simplified interface and background training)
+
 >   python ikdbtest_simple.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 ## 5. Version history ##
