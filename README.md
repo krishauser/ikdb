@@ -134,8 +134,8 @@ time.sleep(600)
 ikdb.flush()
 ```
 
-Please consult the Klamp't IK manual http://motion.pratt.duke.edu/klampt/pyklampt_docs/Manual-IK.html or
-the klampt.ik module documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/klampt.model.ik.html
+Please consult the [Klamp't IK manual](http://motion.pratt.duke.edu/klampt/pyklampt_docs/Manual-IK.html) or
+the [klampt.ik module documentation](http://motion.pratt.duke.edu/klampt/pyklampt_docs/klampt.model.ik.html)
 for more information about how to set up these objectives.
 
 The second easiest way to start is to use the ManagedIKDatabase class.  Here
@@ -273,9 +273,9 @@ The key unit is the IKProblem, which defines an optimal, collision free IK probl
 This class is defined in the ikdb.ikproblem module, and stores the list of IK constraints,
 an optional feasibility test, and an optional cost function to be minimized.  
 
-Each IK constraint is defined as a Klamp't IKObjective object. Please consult the Klamp't IK
-tutorial http://motion.pratt.duke.edu/klampt/tutorial_ik.html or the klampt.ik module
-documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/ik_8py.html
+Each IK constraint is defined as a Klamp't IKObjective object. 
+Please consult the [Klamp't IK manual](http://motion.pratt.duke.edu/klampt/pyklampt_docs/Manual-IK.html) or
+the [klampt.ik module documentation](http://motion.pratt.duke.edu/klampt/pyklampt_docs/klampt.model.ik.html)
 for more information about how to set up these objectives.
 
 IKProblem must be a JSON serializable class using the methods toJson and fromJson.  As a result
