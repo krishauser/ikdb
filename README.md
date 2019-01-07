@@ -74,10 +74,10 @@ in the same form as (1).  Specifically, we define what is known as a P-parameter
 
 that may affect the cost function and constraints of (1).  In other words, we have:
 
->    f(q) == f(q,z)
->    constraint1 == constraint1(z)
->    ...
->    constraintr == constraintr(z)
+>     f(q) == f(q,z)
+>     constraint1 == constraint1(z) 
+>     ...
+>     constraintr == constraintr(z)
 
 (and in general, qmin, qmax, and F may also vary as a function of z as well).
 
