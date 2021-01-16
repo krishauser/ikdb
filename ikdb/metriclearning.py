@@ -49,7 +49,7 @@ def metric_logdet_learn(examples,regularizationParameter):
     signifies they should be far. """
     A = np.eye(len(examples[0][0]))
     for (u,v,sign) in examples:
-        A = metric_logdet_update(A,u,v,1,regularizationParameter)
+        A = metric_logdet_update(A,u,v,1,sign,regularizationParameter)
     return A
 
 def cholesky_update(L,x):
