@@ -162,7 +162,7 @@ class IKProblem:
             else:
                 if len(self.objectives) != 0:
                     if hasattr(self.objectives[0],'robot'):
-                        assert(len(qmin) == self.objectives[0].numLinks())
+                        assert(len(qmin) == self.objectives[0].robot.numLinks())
         self.jointLimits = (qmin,qmax)
     def toJson(self):
         """Returns a JSON object representing this IK problem."""
@@ -211,6 +211,26 @@ class IKProblem:
             else:
                 self.feasibilityTest = functionfactory.andFunction(*[functionfactory.makeFunction(test['type'],test['args']) for test in self.feasibilityTestDescription]) 
         return
+        
+    def ikSolver(self,robot=None,params=IKSolverParams()):
+        """Returns an IK solver configured to solve the IK portion of this problem"""
+        if len(self.objectives) == 0:
+            return None
+        if robot is None:
+            if not hasattr(self.objectives[0],'robot'):
+                print "The objectives passed to IKSolver should come from ik.objective() or have their 'robot' member manually set"
+            robot = self.objectives[0].robot
+        else:
+            for obj in self.objectives:
+                obj.robot = robot
+        solver = ik.solver(self.objectives)
+        if self.activeDofs is not None:
+            solver.setActiveDofs(self.activeDofs)
+        if self.jointLimits is not None: solver.setJointLimits(*self.jointLimits)
+        solver.setMaxIters(params.numIters)
+        solver.setTolerance(params.tol)
+        return solver
+
     def solve(self,robot=None,params=IKSolverParams()):
         """Globally solves the given problem.  Returns the solution
         configuration or None if failed."""
@@ -234,6 +254,8 @@ class IKProblem:
             solver.setActiveDofs(self.activeDofs)
             ikActiveDofs = self.activeDofs
         if self.jointLimits is not None: solver.setJointLimits(*self.jointLimits)
+        solver.setMaxIters(params.numIters)
+        solver.setTolerance(params.tol)
         qmin,qmax = solver.getJointLimits()
         if self.activeDofs is None:
             #need to distinguish between dofs that affect feasibility vs 
@@ -427,8 +449,6 @@ class IKProblem:
                 optSolver.setSeed(x0)
         else:
             #random-restart newton-raphson
-            solver.setMaxIters(params.numIters)
-            solver.setTolerance(params.tol)
             best = None
             bestQuality = float('inf')
             if self.softObjectives:
