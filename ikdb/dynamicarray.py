@@ -1,7 +1,12 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 import numpy as np
 
 def row_iterator(np_array):
-    for item in xrange(np_array.shape[0]):
+    for item in range(np_array.shape[0]):
         yield np_array[item,:].tolist()
     return
 
@@ -40,7 +45,7 @@ class DynamicArray2D:
             if hasattr(self,'array'):
                 self.array = np.vstack((self.array,array_like))
             else:
-                self.items += [array_like[row,:].tolist() for row in xrange(array_like.shape[0])]
+                self.items += [array_like[row,:].tolist() for row in range(array_like.shape[0])]
         elif isinstance(array_like,(DynamicArray2D,list,tuple)):
             self.decompress()
             self.items += [array_like[i] for i in range(len(array_like))]
@@ -61,7 +66,7 @@ class DynamicArray2D:
     def decompress(self):
         try:
             n = self.array.shape[0]
-            self.items = [self.array[item,:].tolist() for item in xrange(n)]
+            self.items = [self.array[item,:].tolist() for item in range(n)]
             del self.array
         except AttributeError:
             #already converted

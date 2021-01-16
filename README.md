@@ -360,7 +360,7 @@ Examples:
 >   python ikdbtest_gl.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 >   (simplified interface and background training)
->   python ikdbtest_simple.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_simple.py -r [KLAMPT_PATH]/data/robots/baxter_col.rob 
 
 ## 5. Version history ##
 

@@ -1,14 +1,24 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 import random
 
-def json_byteify(input):
-    """Converts a json object to byte-strings rather than unicode."""
-    if isinstance(input, dict):
-        return {json_byteify(key):json_byteify(value) for key,value in input.iteritems()}
-    elif isinstance(input, list):
-        return [json_byteify(element) for element in input]
-    elif isinstance(input, unicode):
-        return input.encode('utf-8')
-    else:
+import sys
+if sys.version_info[0] < 3:
+    def json_byteify(input):
+        """Converts a json object to byte-strings rather than unicode."""
+        if isinstance(input, dict):
+            return {json_byteify(key):json_byteify(value) for key,value in input.iteritems()}
+        elif isinstance(input, list):
+            return [json_byteify(element) for element in input]
+        elif isinstance(input, unicode):
+            return input.encode('utf-8')
+        else:
+            return input
+else:
+    def json_byteify(input):
         return input
 
 def mkdir_p(path):

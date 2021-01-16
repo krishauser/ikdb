@@ -1,3 +1,8 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 from ikdb import *
 from ikdb import IKDBTester,MultiIKDBTester
 from ikdb import functionfactory
@@ -16,6 +21,7 @@ import math
 import os
 
 #preload to avoid later delays
+import sklearn.neighbors
 from sklearn.neighbors import NearestNeighbors,BallTree
 from scipy.optimize import differential_evolution
 
@@ -51,6 +57,8 @@ def make_ikdb_tester(robot,iktemplate,ikfeatures,featureranges,
     if trainfile == 'auto':
         dbfile = '%s/ikdb%d.txt' % (robot.getName(),numTrain)
         mkdir_p(robot.getName())
+    else:
+        dbfile = trainfile
     if testfile == 'auto':
         testfile = '%s/iktest%d.txt' % (robot.getName(),numTest)
         mkdir_p(robot.getName())
@@ -90,14 +98,14 @@ def default_position_range(link,localpoint,numIters=1000,expansionFactor=0.1):
     ranges = [None,None,None]
     for i,(a,b) in enumerate(zip(qmin,qmax)):
         if not np.isfinite(a):
-            print "Warning, Setting finite bound on joint",i
+            print("Warning, Setting finite bound on joint",i)
             qmin[i] = -math.pi
         if not np.isfinite(b):
-            print "Warning, Setting finite bound on joint",i
+            print("Warning, Setting finite bound on joint",i)
             qmax[i] = math.pi
         if not (b-a  < 1e20):
-            print "Warning, robot has excessive motion range on link",robot.link(i).getName()
-            raw_input("Press enter to continue")
+            print("Warning, robot has excessive motion range on link",robot.link(i).getName())
+            input("Press enter to continue")
             break
     cnt = 0
     for i in range(10000):
@@ -115,9 +123,9 @@ def default_position_range(link,localpoint,numIters=1000,expansionFactor=0.1):
         cnt += 1
         if cnt > 1000:
             break
-    print "Randomized range on link",link.getName(),":",ranges
+    print ("Randomized range on link",link.getName(),":",ranges)
     if cnt < 100:
-        print "WARNING: very few self-collision free configurations found"
+        print ("WARNING: very few self-collision free configurations found")
     for k in range(3):
         exp = expansionFactor*(ranges[k][1]-ranges[k][0])
         ranges[k] = (ranges[k][0]-exp,ranges[k][1]+exp)
@@ -127,10 +135,12 @@ def run_tests_main(ikobjectivejson,ikfeatures):
     """A basic tester that runs a given ik feature as configured by the command line arguments.  Runs a given
     IK objective on one or more links"""
     import argparse
+    import os
+    default_fn = os.path.expanduser("~/Klampt-examples/data/robots/tx90ball.rob")
     default_parser = argparse.ArgumentParser(description='Generate an IK database for a point-constrained IK problem.')
     default_parser.add_argument('-t','--train',metavar='N',type=int,help="# of training examples",default=1000)
     default_parser.add_argument('-T','--test',metavar='N',type=int,help="# of testing examples",default=1000)
-    default_parser.add_argument('-r','--robot',metavar='ROBOT',type=str,help="Robot or world file",default="../../Klampt/data/robots/tx90ball.rob")
+    default_parser.add_argument('-r','--robot',metavar='ROBOT',type=str,help="Robot or world file",default=default_fn)
     default_parser.add_argument('-f','--file',metavar='FILE',type=str,help="DB file name",default="auto")
     default_parser.add_argument('-g','--testfile',metavar='FILE',type=str,help="Test file name",default="auto")
     default_parser.add_argument('--redotrain',action='store_const',const=1,help="Re-train the database",default=0)
@@ -142,8 +152,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
     default_parser.add_argument('--feasible',metavar='NAME',type=str,help="Name of feasibility test function",default='collisionFree')
     default_parser.add_argument('-p','--localpoint',metavar='V',action='append',type=float,nargs=3,help="Local point of IK constraint",default=[0,0,0])
     default_parser.add_argument('-l','--link',metavar='N',action='append',help="Index or name of robot link(s)",default=[])
-
-
+    
     ns = default_parser.parse_args(sys.argv[1:])
 
     world = WorldModel()
@@ -160,7 +169,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
     features = []
     ranges = []
     if len(ns.link)==0:
-        print "No link specified, using the last link in the robot file"
+        print ("No link specified, using the last link in the robot file")
         ns.link = [robot.numLinks()-1]
     for i,link in enumerate(ns.link):
         try:
@@ -205,7 +214,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
     if ns.metriclearn > 0:
         for i in range(10):
             tester.db.metricLearn(ns.metriclearn/10)
-            print "Round",i,"matrix:",tester.db.metricMatrix
+            print ("Round",i,"matrix:",tester.db.metricMatrix)
 
     #run the testing
     for N in ns.RR:

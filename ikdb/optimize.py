@@ -1,3 +1,8 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 import numpy as np
 
 class Problem:
@@ -105,7 +110,7 @@ class LocalOptimizer:
     def __init__(self,method='auto'):
         if method == 'auto':
             try:
-                import pyopt
+                import pyOpt
                 method = 'pyOpt.SLSQP'
             except ImportError:
                 method = 'scipy'
@@ -135,11 +140,11 @@ class LocalOptimizer:
             if problem.bounds:
                 bounds = zip(*problem.bounds)
             constraintDicts = []
-            for i in xrange(len(problem.equalities)):
+            for i in range(len(problem.equalities)):
                 constraintDicts.append({'type':'eq','fun':problem.equalities[i]})
                 if problem.equalityGrads[i] is not None:
                     constraintDicts[-1]['jac'] = problem.equalityGrads[i]
-            for i in xrange(len(problem.inequalities)):
+            for i in range(len(problem.inequalities)):
                 constraintDicts.append({'type':'ineq','fun':lambda x:-np.array(problem.inequalities[i](x))})
                 if problem.inequalityGrads[i] is not None:
                     constraintDicts[-1]['jac'] = lambda x:-np.array(problem.inequalityGrads[i](x))
@@ -198,7 +203,7 @@ class LocalOptimizer:
                     #TEMP: test no analytic gradients
                     #sens_type = objfuncgrad
                 else:
-                    print "Warning, need all or no gradients provided"
+                    print ("Warning, need all or no gradients provided")
             [fstr, xstr, inform] = opt(opt_prob,sens_type=sens_type)
             if inform['value'] != 0:
                 return False,xstr.tolist()
@@ -211,7 +216,7 @@ class LocalOptimizer:
             if not feasible:
                 if not boundfeasible:
                     #try clamping
-                    for i in xrange(len(xstr)):
+                    for i in range(len(xstr)):
                         xstr[i] = min(max(xstr[i],problem.bounds[0][i]),problem.bounds[1][i])
                     f,g,flag = objfunc(xstr)
                     boundfeasible = True
@@ -219,10 +224,10 @@ class LocalOptimizer:
                     ineqfeasible = all(v <= 0 for v in g[hlen:hlen+glen])
                     feasible = eqfeasible and ineqfeasible and boundfeasible
                 """if not feasible:
-                    print "Strange, optimizer says successful and came up with an infeasible solution",eqfeasible,ineqfeasible,boundfeasible
-                    print fstr,xstr,inform
-                    print problem.equalities[0](xstr)
-                    print g
+                    print ("Strange, optimizer says successful and came up with an infeasible solution",eqfeasible,ineqfeasible,boundfeasible)
+                    print (fstr,xstr,inform)
+                    print (problem.equalities[0](xstr))
+                    print (g)
                 """
             return feasible,xstr.tolist()
         else:
@@ -280,7 +285,7 @@ class GlobalOptimizer:
                     toli = tol[i]
                 else:
                     toli = tol
-                print "Step",i,"method",m,'iters',itersi,'tol',toli
+                print ("Step",i,"method",m,'iters',itersi,'tol',toli)
                 if m == 'auto':
                     opt = LocalOptimizer(m)
                 else:
@@ -297,9 +302,9 @@ class GlobalOptimizer:
                 raise RuntimeError("Cannot use scipy differential_evolution method without a bounded search space")
             flattenedProblem = problem.flatten(objective_scale = 1e-5)
             res = optimize.differential_evolution(flattenedProblem.objective,zip(*flattenedProblem.bounds))
-            print "scipy.differential_evolution solution:",res.x
-            print "Objective value",res.fun
-            print "Equality error:",[gx(res.x) for gx in problem.equalities]
+            print ("scipy.differential_evolution solution:",res.x)
+            print ("Objective value",res.fun)
+            print ("Equality error:",[gx(res.x) for gx in problem.equalities])
             return (True,res.x)
         elif self.method == 'DIRECT':
             import DIRECT
@@ -314,11 +319,11 @@ class GlobalOptimizer:
                     userdata[1] = [float(xi) for xi in x]
                 return v
             (x,fmin,ierror)=DIRECT.solve(objfunc,problem.bounds[0],problem.bounds[1],eps=tol,maxT=numIters,maxf=40000,algmethod=1,user_data=minval)
-            print "DIRECT solution:",x
-            print "Objective value",fmin
-            print "Minimum value",minval[0],minval[1]
-            print "Error:",ierror
-            print "Equality error:",[gx(x) for gx in problem.equalities]
+            print ("DIRECT solution:",x)
+            print ("Objective value",fmin)
+            print ("Minimum value",minval[0],minval[1])
+            print ("Error:",ierror)
+            print ("Equality error:",[gx(x) for gx in problem.equalities])
             return (True,minval[1])
         elif self.method.startswith('random-restart'):
             import random
@@ -328,7 +333,7 @@ class GlobalOptimizer:
             lopt = LocalOptimizer(localmethod)
             best = self.seed
             fbest = (problem.objective(best) if best is not None else float('inf'))
-            for it in xrange(numIters[0]):
+            for it in range(numIters[0]):
                 x = [random.uniform(a,b) for a,b in zip(*problem.bounds)]
                 lopt.setSeed(x)
                 succ,x = lopt.solve(problem,numIters[1],tol)

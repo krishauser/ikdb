@@ -1,3 +1,8 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range,str
+from six import iteritems
+
 import pkg_resources
 if pkg_resources.get_distribution('klampt').version >= '0.7':
     from klampt.math import vectorops
@@ -33,24 +38,24 @@ def registerFunction(type,f,varname='x'):
     if varname not in args:
         raise ValueError("The variable name "+varname+" must be in the function's argment list, instead got "+",".join(args))
     if varargs is not None:
-        print "registerFunction: Warning, may have errors with variable arguments"
+        print ("registerFunction: Warning, may have errors with variable arguments")
     argindex = args.index(varname)
     def makefunc(argbundle):
         if isinstance(argbundle,dict):
-            assert varname not in argbundle,"Must not pass value "+varname+" to function "+func
+            assert varname not in argbundle,"Must not pass value "+varname+" to function "+f
             return lambda x:f(varname=x,**argbundle)
         elif isinstance(argbundle,(tuple,list)):
-            assert len(args)==len(argbundle)+1,"Must pass in all other arguments "+",".join(args)+" except for "+varname+" to function "+func
+            assert len(args)==len(argbundle)+1,"Must pass in all other arguments "+",".join(args)+" except for "+varname+" to function "+f
             #need to pass in order
             return lambda x:f(*(argbundle[:argindex]+[x]+argbundle[argindex:]))
         elif argbundle is not None:
-            assert len(args)==2,"Not enough arguments passed to function "+func
+            assert len(args)==2,"Not enough arguments passed to function "+f
             if argindex==0:
                 return lambda x:f(x,argbundle)
             elif argindex==1:
                 return lambda x:f(x,argbundle)
         else:
-            assert len(args)==1,"Not enough arguments passed to function "+func
+            assert len(args)==1,"Not enough arguments passed to function "+f
             return lambda x:f(x)
     registerFunctionFactory(type,makefunc)
 
@@ -113,6 +118,6 @@ def makeFunction(type,arguments):
     try:
         f = _functionFactories[type]
     except KeyError:
-        print "Function of type",type,"does not exist"
+        print ("Function of type",type,"does not exist")
         return None
     return f(arguments)

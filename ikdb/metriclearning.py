@@ -1,3 +1,8 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 import numpy as np
 import math
 
@@ -57,7 +62,7 @@ def cholesky_update(L,x):
     n = L.shape[0]
     assert n == L.shape[1] and n == len(x)
     alpha=1
-    for i in xrange(n):
+    for i in range(n):
         deltai = pow(L[i,i],2);
         temp = alpha + pow(x[i],2)/deltai
         deltai = deltai*temp
@@ -65,7 +70,7 @@ def cholesky_update(L,x):
         deltai = deltai / alpha
         alpha = temp
         L[i,i] = math.sqrt(deltai)
-        for k in xrange(i+1,n):
+        for k in range(i+1,n):
             x[k] -= x[i]*L[k,i]
             L[k,i] += gamma*x[k]
 
@@ -74,7 +79,7 @@ def cholesky_downdate(L,x):
     n = L.shape[0]
     assert n == L.shape[1] and n == len(x)
     alpha=1
-    for i in xrange(n):
+    for i in range(n):
         deltai = pow(L[i,i],2);
         temp = alpha - pow(x[i],2)/deltai
         deltai = deltai*temp
@@ -86,7 +91,7 @@ def cholesky_downdate(L,x):
         if deltai < 0:
             raise RuntimeError("Matrix became negative definite in entry %d"%(i,))
         L[i,i] = math.sqrt(deltai)
-        for k in xrange(i+1,n):
+        for k in range(i+1,n):
             x[k] -= x[i]*L[k,i]
             L[k,i] -= gamma*x[k]
 
@@ -142,8 +147,8 @@ if __name__ == '__main__':
         A = metric_logdet_update(A,pt1,pt2,thresh,(1 if dtrue < thresh else -1),regularization)
         metric_logdet_update_cholesky(L,pt1,pt2,thresh,(1 if dtrue < thresh else -1),regularization)
         #A = np.dot(L,L.T)
-        #print "Update",i,":",A
+        #print ("Update",i,":",A)
     t1 = time.time()
-    print numpts,"updates, time",t1-t0
-    print "Result",A
-    print "Result cholesky",L
+    print (numpts,"updates, time",t1-t0)
+    print ("Result",A)
+    print ("Result cholesky",L)

@@ -1,3 +1,9 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range,str
+from OpenGL.raw.GLU.constants import GLU_TESS_WINDING_NONZERO
+from six import iteritems
+
 import pkg_resources
 if pkg_resources.get_distribution('klampt').version >= '0.7':
     NEW_KLAMPT = True
@@ -11,10 +17,10 @@ else:
     from klampt import IKObjective
     from klampt import loader
 import time
-import features
+from . import features
 import random
-import optimize
-import functionfactory
+from . import optimize
+from . import functionfactory
 
 class IKSolverParams:
     def __init__(self,numIters=50,tol=1e-3,
@@ -28,7 +34,7 @@ class IKSolverParams:
         self.globalMethod = globalMethod
         self.localMethod = localMethod
 
-def global_solve(optproblem,params=IKSolverParams(),seed=None):
+def global_solve(optProblem,params=IKSolverParams(),seed=None):
     """Globally solves a optimize.Problem instance with the given IKSolverParams.
     Optionally takes a seed as well.
     """
@@ -218,7 +224,7 @@ class IKProblem:
             return None
         if robot is None:
             if not hasattr(self.objectives[0],'robot'):
-                print "The objectives passed to IKSolver should come from ik.objective() or have their 'robot' member manually set"
+                print ("The objectives passed to IKSolver should come from ik.objective() or have their 'robot' member manually set")
             robot = self.objectives[0].robot
         else:
             for obj in self.objectives:
@@ -244,7 +250,7 @@ class IKProblem:
             return None
         if robot is None:
             if not hasattr(self.objectives[0],'robot'):
-                print "The objectives passed to IKSolver should come from ik.objective() or have their 'robot' member manually set"
+                print ("The objectives passed to IKSolver should come from ik.objective() or have their 'robot' member manually set")
             robot = self.objectives[0].robot
         else:
             for obj in self.objectives:
@@ -269,6 +275,7 @@ class IKProblem:
                 nonIKDofs = []
                 ikToActive = range(len(activeDofs))
         else:
+            ikActiveDofs = self.activeDofs
             activeDofs = ikActiveDofs
             nonIKDofs = []
             ikToActive = range(len(ikActiveDofs))
@@ -280,6 +287,8 @@ class IKProblem:
                 for i in nonIKDofs:
                     q[i] = random.uniform(qmin[i],qmax[i])
                 robot.setConfig(q)
+        optProblem = None
+        softOptProblem = None
         if params.localMethod is not None or params.globalMethod is not None:
             #set up optProblem, an instance of optimize.Problem
             optProblem = optimize.Problem()
@@ -306,7 +315,7 @@ class IKProblem:
                     robot.setConfig(q)
                     Jikdofs = solver.getJacobian()
                     for i in ikActiveDofs:
-                        for j in xrange(len(Jactive)):
+                        for j in range(len(Jactive)):
                             Jactive[j][ikToActive[i]] = Jikdofs[j][i]
                     return Jactive
             def costFunc(x):
@@ -359,13 +368,13 @@ class IKProblem:
                 #optProblem.  If 0 objective value is not obtained, constrain the residual norm-squared to be that value
                 (succ,res) = global_solve(softOptProblem,params,x0)
                 if not succ:
-                    print "Global soft optimize returned failure"
+                    print ("Global soft optimize returned failure")
                     return None
                 for d,v in zip(activeDofs,res):
                     q[d] = v
                 if self.costFunction is None:
                     #no cost function, just return
-                    print "Global optimize succeeded! Cost",self.costFunction(q)
+                    print ("Global optimize succeeded! Cost",self.costFunction(q))
                     return q
                 x0 = res
                 #now modify the constraint of optProblem
@@ -392,20 +401,20 @@ class IKProblem:
             #do global optimization of the cost function and return
             (succ,res) = global_solve(optProblem,params,x0)
             if not succ:
-                print "Global optimize returned failure"
+                print ("Global optimize returned failure")
                 return None
             for d,v in zip(activeDofs,res):
                 q[d] = v
             #check feasibility if desired
             if self.feasibilityTest is not None and not self.feasibilityTest(q):
-                print "Result from global optimize isn't feasible"
+                print ("Result from global optimize isn't feasible")
                 return None
-            if not softObjectives:
+            if not self.softObjectives:
                 if max(abs(v) for v in solver.getResidual()) > params.tol:
-                    print "Result from global optimize doesn't satisfy tolerance.  Residual",vectorops.norm(solver.getResidual())
+                    print ("Result from global optimize doesn't satisfy tolerance.  Residual",vectorops.norm(solver.getResidual()))
                     return None
             #passed
-            print "Global optimize succeeded! Cost",self.costFunction(q)
+            print ("Global optimize succeeded! Cost",self.costFunction(q))
             return q                
 
         #DONT DO THIS... much faster to do newton solves first, then local optimize.
@@ -419,7 +428,7 @@ class IKProblem:
             optSolver.setSeed(x0)
             best = None
             bestQuality = float('inf')
-            for restart in xrange(params.numRestarts):
+            for restart in range(params.numRestarts):
                 if time.time() - t0 > params.timeout:
                     return best
                 res = optSolver.solve(optProblem,params.numIters,params.tol)
@@ -455,7 +464,7 @@ class IKProblem:
                 #quality is a tuple
                 bestQuality = bestQuality,bestQuality
             quality = None
-            for restart in xrange(params.numRestarts):
+            for restart in range(params.numRestarts):
                 if time.time() - t0 > params.timeout:
                     return best
                 t0 = time.time()
@@ -545,11 +554,11 @@ class IKProblem:
                     #optimize
                     quality = self.costFunction(q)
                     if quality < bestQuality:
-                        #print "Optimization improvement",bestQuality,"->",quality
+                        #print ("Optimization improvement",bestQuality,"->",quality)
                         best = q
                         bestQuality = quality
                     elif quality > bestQuality + 1e-2:
-                        print "Got worse solution by local optimizing?",bestQuality,"->",quality
+                        print ("Got worse solution by local optimizing?",bestQuality,"->",quality)
         return best
     
     def score(self,robot):
@@ -608,8 +617,8 @@ def featuresToIkProblem(ikproblem0,featureList,values):
         obj.fromJson(ikproblem0)
         return obj
     else:
-        print "featureToIkProblem: slower version being called"
-        raw_input()
+        print ("featureToIkProblem: slower version being called")
+        input()
     if isinstance(ikproblem0,IKProblem):
         jsonObj = ikproblem0.toJson()
         features.inject(jsonObj,featureList,values)

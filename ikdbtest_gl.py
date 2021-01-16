@@ -1,3 +1,8 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 from ikdb import *
 from ikdb import functionfactory
 from klampt import *
@@ -10,6 +15,7 @@ if pkg_resources.get_distribution('klampt').version >= '0.7':
     from klampt.vis.glcommon import *
     from klampt import PointPoser,TransformPoser
     from klampt.model import collide
+    from klampt.math import se3
     #patch to Klamp't 0.6.X
     class GLWidgetProgram(GLPluginProgram):
         def __init__(self,world,name):
@@ -27,6 +33,7 @@ else:
     from klampt.glrobotprogram import *
     from klampt import PointPoser,TransformPoser
     from klampt import robotcollide as collide
+    from klampt import se3
 import sys
 import traceback
 import numpy as np
@@ -34,7 +41,6 @@ import numpy as np
 
 #preload
 from sklearn.neighbors import NearestNeighbors,BallTree
-import pyOpt
 
 class IKDBVisualTester(GLWidgetProgram):
     def __init__(self,visWorld,planningWorld,name="IK Database visual tester"):
@@ -115,31 +121,31 @@ class IKDBVisualTester(GLWidgetProgram):
 
     def keyboardfunc(self,c,x,y):
         if c=='h':
-            print 'HELP:'
-            print '[right-click]: add a new IK constraint'
-            print '[space]: tests the current configuration'
-            print 'd: deletes IK constraint'
-            print 't: adds a new rotation-fixed IK constraint'
-            print 'f: flushes the current database to disk'
-            print 's: saves the current database to disk'
-            print 'b: performs one background step'
-            print 'B: starts / stops the background thread'
-            print 'v: toggles display of the database'
-            print 'c: toggles continuous re-solving of IK constraint its as being moved'
-            print 'o: toggles soft / hard IK constraints'
+            print ('HELP:')
+            print ('[right-click]: add a new IK constraint')
+            print ('[space]: tests the current configuration')
+            print ('d: deletes IK constraint')
+            print ('t: adds a new rotation-fixed IK constraint')
+            print ('f: flushes the current database to disk')
+            print ('s: saves the current database to disk')
+            print ('b: performs one background step')
+            print ('B: starts / stops the background thread')
+            print ('v: toggles display of the database')
+            print ('c: toggles continuous re-solving of IK constraint its as being moved')
+            print ('o: toggles soft / hard IK constraints')
         elif c==' ':
             self.planningWorld.robot(0).setConfig(self.currentConfig)
             soln = self.ikdb.solve(self.ikProblem)
             if soln:
-                print "Solved"
+                print ("Solved")
                 self.currentConfig = soln
                 self.refresh()
             else:
-                print "Failure"
+                print ("Failure")
         elif c=='d':
             for i,w in enumerate(self.ikWidgets):
                 if w.hasHighlight():
-                    print "Deleting IK widget"
+                    print ("Deleting IK widget")
                     #delete it
                     index = self.ikIndices[i]
                     self.widgetMaster.remove(w)
@@ -210,8 +216,8 @@ class IKDBVisualTester(GLWidgetProgram):
         if self.drawDb:
             glPointSize(3.0)
             glBegin(GL_POINTS)
-            for k,db in self.ikdb.databases.iteritems():
-                for i in xrange(db.numProblems()):
+            for k,db in iteritems(self.ikdb.databases):
+                for i in range(db.numProblems()):
                     try:
                         p = db.getProblem(i)
                     except Exception as e:
@@ -258,12 +264,13 @@ class IKDBVisualTester(GLWidgetProgram):
         return obj,vectorops.madd(s,d,dist)
 
 def main():
-    print "ikdbtest2.py: This example visually shows the learning process"
-    print "USAGE: ikdbtest2.py [ROBOT OR WORLD FILE]"
-    print "Press h for help."
+    print ("ikdbtest2.py: This example visually shows the learning process")
+    print ("USAGE: ikdbtest2.py [ROBOT OR WORLD FILE]")
+    print ("Press h for help.")
 
     import sys
-    fn = "../../data/robots/tx90ball.rob"
+    import os
+    fn = os.path.expanduser("~/Klampt-examples/data/robots/tx90ball.rob")
     if len(sys.argv) > 1:
         fn = sys.argv[1]
 
@@ -275,10 +282,10 @@ def main():
     qmin,qmax = world.robot(0).getJointLimits()
     for i,(a,b) in enumerate(zip(qmin,qmax)):
         if not np.isfinite(a):
-            print "Setting finite bound on joint",i
+            print ("Setting finite bound on joint",i)
             qmin[i] = -math.pi
         if not np.isfinite(b):
-            print "Setting finite bound on joint",i
+            print ("Setting finite bound on joint",i)
             qmax[i] = math.pi
     planningWorld.robot(0).setJointLimits(qmin,qmax)
 

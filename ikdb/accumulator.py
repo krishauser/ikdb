@@ -90,7 +90,7 @@ def StdDeviation():
     var = Variance()
     while True:
         x = yield
-        var.next()
+        next(var)
         v = var.send(x)
         yield math.sqrt(v)
 
@@ -124,7 +124,7 @@ def Multiple(*funcs):
         x = yield
         vals = []
         for f in funcs:
-            f.next()
+            next(f)
             vals.append(f.send(x))
         yield vals
 
@@ -137,7 +137,7 @@ class Accumulator:
         self.value = None
         self.label = label
     def add(self,x):
-        self.generator.next()
+        next(self.generator)
         self.value = self.generator.send(x)
     def asdict(self):
         if self.value is None:
@@ -159,4 +159,5 @@ if __name__=="__main__":
     m.add(2)
     m.add(3)
     m.add(4)
-    print m.asdict()
+    print(m.asdict())
+    

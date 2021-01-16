@@ -13,8 +13,13 @@ Some terminology:
   into a hierarchical object of the same structure, given the same feature
   mapping.
 """
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range,str
+from six import iteritems
+
 from collections import defaultdict
-import accumulator
+from . import accumulator
 
 def _extract_one(object,feature):
     if isinstance(feature,(list,tuple)):
@@ -68,23 +73,23 @@ def extract(object,features):
         try:
             v.append(_extract_one(object,f))
         except Exception:
-            print "Error extracting feature",f,"from",object
+            print ("Error extracting feature",f,"from",object)
             raise
     return _flatten(v)
 
 def _fill(object,valueIter):
     if isinstance(object,(list,tuple)):
-        for i in xrange(len(object)):
+        for i in range(len(object)):
             if hasattr(object[i],'__iter__'):
                 _fill(object[i],valueIter)
             else:
-                object[i] = valueIter.next()
+                object[i] = next(valueIter)
     elif isinstance(object,dict):
         for i in object:
             if hasattr(object[i],'__iter__'):
                 _fill(object[i],valueIter)
             else:
-                object[i] = valueIter.next()
+                object[i] = next(valueIter)
     else:
         raise RuntimeError("_fill can only be called with a container type")
 
@@ -99,17 +104,17 @@ def _inject_one(object,feature,valueIter):
         if hasattr(object[feature],'__iter__'):
             _fill(object[feature],valueIter)
         else:
-            object[feature]=valueIter.next()
+            object[feature]=next(valueIter)
     elif hasattr(object,feature):
         if hasattr(object.feature,'__iter__'):
             _fill(object.feature,valueIter)
         else:
-            object.feature=valueIter.next()
+            object.feature=next(valueIter)
     else:
         if hasattr(object[feature],'__iter__'):
             _fill(object[feature],valueIter)
         else:
-            object[feature]=valueIter.next()
+            object[feature]=next(valueIter)
 
 def inject(object,features,values):
     """Given a hierarchical structure 'object', a list of feature paths
@@ -157,7 +162,7 @@ def structure(object,hashable=True):
         return res
     elif isinstance(object,dict):
         res = dict()
-        for k,v in object.iteritems():
+        for k,v in iteritems(object):
             res[k] = structure(v)
         if hashable: return tuple(res.items())
         return res
@@ -176,7 +181,7 @@ def structureMatch(object1,object2):
     elif isinstance(object1,dict):
         if not isinstance(object2,dict): return False
         if len(object1) != len(object2): return False
-        for k,v in object1.iteritems():
+        for k,v in iteritems(object1):
             try:
                 v2 = object2[k]
             except KeyError:
@@ -206,7 +211,7 @@ def schema(object):
         return res
     elif isinstance(object,dict):
         res = dict()
-        for k,v in object.iteritems():
+        for k,v in iteritems(object):
             res[k] = structure(v)
         return res
     else:
@@ -224,7 +229,7 @@ def schemaMatch(schema,object):
     elif isinstance(schema,dict):
         if not isinstance(schema,dict): return False
         if len(schema) != len(object): return False
-        for k,v in schema.iteritems():
+        for k,v in iteritems(schema):
             try:
                 v2 = object[k]
             except KeyError:
@@ -274,7 +279,7 @@ class HierarchicalAccumulator:
             elif isinstance(item,(list,tuple)):
                 self.counts = [HierarchicalAccumulator(self.makeAccumulator,self.path+[i]) for i in range(len(item))]
             elif isinstance(item,dict):
-                self.counts = dict((k,HierarchicalAccumulator(self.makeAccumulator,self.path+[k])) for k in item.iterkeys())
+                self.counts = dict((k,HierarchicalAccumulator(self.makeAccumulator,self.path+[k])) for k in item)
             else:
                 raise TypeError("Don't know how to initialize item")
         if not hasattr(item,'__iter__') or isinstance(item,str):
@@ -286,7 +291,7 @@ class HierarchicalAccumulator:
                 assert isinstance(self.counts,dict),"Item does not follow established structure of "+self.pathStr()
                 #counts is a dictionary set up to count the attributes of
                 #item
-                for k,c in self.counts.iteritems():
+                for k,c in iteritems(self.counts):
                     try:
                         i = getattr(item,k)
                     except AttributeError:
@@ -302,7 +307,7 @@ class HierarchicalAccumulator:
             assert isinstance(self.counts,dict),"Item does not follow established structure of "+self.pathStr()
             if len(item) != len(self.counts):
                 raise ValueError("Incorrect size of dict in path "+self.pathStr())
-            for k,c in self.counts.iteritems():
+            for k,c in iteritems(self.counts):
                 try:
                     i = item[k]
                 except KeyError:
@@ -332,17 +337,17 @@ def AutoStats(maxDistinctValues=10):
             elif datatype == 'mixed':
                 pass
             else:
-                if isinstance(x,(str,unicode)):
-                    if datatype not in (str,unicode):
+                if isinstance(x,str):
+                    if datatype is not str:
                         datatype = 'mixed' 
                 elif isinstance(x,(bool,int)):
-                    if datatype in (str,unicode):
+                    if datatype is not str:
                         datatype = 'mixed'
                     else:
                         #promote bools to integer
                         datatype = int
                 elif isinstance(x,float):
-                    if datatype in (str,unicode):
+                    if datatype is not str:
                         datatype = 'mixed'
                     else:
                         #promote ints to real
@@ -351,17 +356,17 @@ def AutoStats(maxDistinctValues=10):
                     raise ValueError("Invalid type of entry "+str(x))
         if datatype == 'mixed':
             yield (datatype,None)
-        elif datatype in (str,unicode):
-            h.next()
+        elif datatype is str:
+            next(h)
             hv = h.send(x)
             yield ('string',hv)
         elif datatype == int:
-            h.next()
+            next(h)
             hv = h.send(x)
             yield ('integer',hv)
         else:
             x = float(x)
-            h.next()
+            next(h)
             hv = h.send(x)
             yield ('real',hv)
 
@@ -436,7 +441,7 @@ def _featureMine(dataset,countThreshold,quick,path):
                 raise ValueError("Not all instances of path "+path+" have "+str(n)+" entries")
         rootpaths = []
         rootcounts = []
-        for key in item0.iterkeys():
+        for key in item0:
             entries = []
             for i,d in enumerate(dataset):
                 if key not in d:
@@ -572,7 +577,7 @@ def multiStructureFeatureMine(dataset,countThreshold=2,quick=False):
         except KeyError:
             structmatches[s] = [d]
     res = []
-    for s,d in structmatches.iteritems():
+    for s,d in iteritems(structmatches):
         dres = featureMine(d,countThreshold,quick)
         f,c = dres
         res.append((d[0],f,c))
@@ -581,11 +586,11 @@ def multiStructureFeatureMine(dataset,countThreshold=2,quick=False):
 
 if __name__=='__main__':
     object = {'name':'Joe','type':'standard','account':1234,'orders':[2345,3456]}
-    print "Account,orders:",extract(object,['account','orders'])
-    print "Account,orders[1]:",extract(object,['account',['orders',1]])
+    print ("Account,orders:",extract(object,['account','orders']))
+    print ("Account,orders[1]:",extract(object,['account',['orders',1]]))
 
     inject(object,['account','orders'],[1235,2346,3457])
-    print "Injected:",object
+    print ("Injected:",object)
 
     #test the single-structure miner
     import copy
@@ -596,29 +601,29 @@ if __name__=='__main__':
     object2['account'] = 586
     object2['orders'][1] = 7201
     t0 = time.time()
-    print "Features:",featureMine([object1,object2]*10000,quick=True)[0]
-    print "Batch time:",time.time()-t0
+    print ("Features:",featureMine([object1,object2]*10000,quick=True)[0])
+    print ("Batch time:",time.time()-t0)
     t0 = time.time()
     disc = IncrementalFeatureMiner(dataset=[object1,object2]*10000)
     t1 = time.time()
-    print "Features:",disc.getFeatureList()
-    print "Incremental time:",t1-t0
+    print ("Features:",disc.getFeatureList())
+    print ("Incremental time:",t1-t0)
 
     #test the multi-structure miner
     t0 = time.time()
     structs,featureLists,featureCounts = zip(*multiStructureFeatureMine([100,40,{'foo':'bar'},{'foo':'baz','a':30},{'foo':'baz','a':60},40]*10000))
     t1 = time.time()
-    print "Template: Features"
+    print ("Template: Features")
     for (s,f) in zip(structs,featureLists):
-        print structure(s,hashable=False),":",",".join(str(fi) for fi in f)
-    print "Batch time",t1-t0
+        print (structure(s,hashable=False),":",",".join(str(fi) for fi in f))
+    print ("Batch time",t1-t0)
     t0 = time.time()
     disc = IncrementalMultiStructureFeatureMiner(dataset=[100,40,{'foo':'bar'},{'foo':'baz','a':30},{'foo':'baz','a':60},40]*10000)
     t1 = time.time()
     templates = disc.getTemplates()
-    print "Template: Features"
+    print ("Template: Features")
     for t in templates:
         f = disc.getFeatureList(t)
-        print structure(t,hashable=False),':',",".join(str(fi) for fi in f)
-    print "Incremental time",t1-t0    
+        print (structure(t,hashable=False),':',",".join(str(fi) for fi in f))
+    print ("Incremental time",t1-t0)
                                                                        

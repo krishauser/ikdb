@@ -1,6 +1,12 @@
+#Python 2/3 compatibility
+from __future__ import print_function,division,absolute_import
+from builtins import input,range
+from six import iteritems
+
 from klampt import *
 from ikdb import ikdb
 from ikdb import functionfactory
+import pkg_resources
 if pkg_resources.get_distribution('klampt').version >= '0.7':
     from klampt.io import loader
 else:
@@ -21,8 +27,10 @@ ns = None
 def init_main():
     global ns,robot
     import argparse
+    import os
+    default_fn = os.path.expanduser("~/Klampt-examples/data/robots/tx90ball.rob")
     default_parser = argparse.ArgumentParser(description='Generate an IK database for a point-constrained IK problem.')
-    default_parser.add_argument('-r','--robot',metavar='ROBOT',type=str,help="Robot or world file",default="../../Klampt/data/robots/tx90ball.rob")
+    default_parser.add_argument('-r','--robot',metavar='ROBOT',type=str,help="Robot or world file",default=default_fn)
     default_parser.add_argument('--cost',metavar='NAME',type=str,help="Name of objective function",default='jointRangeCost')
     default_parser.add_argument('--feasible',metavar='NAME',type=str,help="Name of feasibility test function",default='collisionFree')
     default_parser.add_argument('-p','--localpoint',metavar='V',action='append',type=float,nargs=3,help="Local point of IK constraint",default=[0,0,0])
@@ -46,7 +54,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
     #make the IK template from the json spec
     objectives = []
     if len(ns.link)==0:
-        print "No link specified, using the last link in the robot file"
+        print ("No link specified, using the last link in the robot file")
         ns.link = [robot.numLinks()-1]
     for i,link in enumerate(ns.link):
         try:
@@ -65,7 +73,7 @@ def run_tests_main(ikobjectivejson,ikfeatures):
 
     #generate some IK problem
     res = ikdb.solve(objectives,feasibilityCheck=ns.feasible,costFunction=ns.cost)
-    print "res:",res
+    print ("res:",res)
     
 
 if __name__=='__main__':
