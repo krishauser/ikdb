@@ -1,3 +1,5 @@
+import numpy as np
+
 class Problem:
     """A holder for optimization problem data.  All attributes are optional,
     and some solvers can't handle certain types of problem data.
@@ -138,9 +140,9 @@ class LocalOptimizer:
                 if problem.equalityGrads[i] is not None:
                     constraintDicts[-1]['jac'] = problem.equalityGrads[i]
             for i in xrange(len(problem.inequalities)):
-                constraintDicts.append({'type':'ineq','fun':problem.inequalities[i]})
+                constraintDicts.append({'type':'ineq','fun':lambda x:-np.array(problem.inequalities[i](x))})
                 if problem.inequalityGrads[i] is not None:
-                    constraintDicts[-1]['jac'] = problem.inequalityGrads[i]
+                    constraintDicts[-1]['jac'] = lambda x:-np.array(problem.inequalityGrads[i](x))
             res = optimize.minimize(problem.objective,x0=self.seed,method=scipyMethod,
                                     jac=jac,bounds=bounds,
                                     constraints=constraintDicts,tol=tol,options={'maxiter':numIters})
