@@ -1,11 +1,13 @@
 # Inverse Kinematics Database (IKDB) Library #
-### version 0.2 ###
+### version 0.3 ###
 
 Kris Hauser
 
-Duke University
+University of Illinois at Urbana Champaign
 
-11/24/2016
+kkhauser@illinois.edu
+
+1/15/2020
 
 ## 1. Purpose ##
 
@@ -22,9 +24,9 @@ It also provides functionality to learn the database in the background.
 
 It accompanies the paper:
 
-Kris Hauser, Learning the Problem-Optimum Map: Analysis and Application
-to Global Optimization in Robotics. arXiv:1605.04636, http://arxiv.org/abs/1605.04636
-[Also to appear in IEEE Transactions on Robotics]
+    Kris Hauser, Learning the Problem-Optimum Map: Analysis and Application
+    to Global Optimization in Robotics. IEEE Transactions on Robotics, 2017. [also appearing in
+    arXiv:1605.04636, http://arxiv.org/abs/1605.04636]
 
 IKDB is written in a Python front end for customizability, while the solvers used
 by its dependencies use C++ and Fortran back ends for speed.
@@ -32,17 +34,21 @@ by its dependencies use C++ and Fortran back ends for speed.
 
 ## 2. Installation and dependencies ##
 
-IKDB requires Python and the following Python packages
-Scipy
-Klampt Python API (http://klampt.org) either version 0.6.X or 0.7+
-Optional packages:
-  PyOpt (http://www.pyopt.com), a local optimization package 
-  DIRECT (https://pypi.python.org/pypi/DIRECT/), another global optimizer used
-     for comparison.  Testing indicates performance is not competitive.
-  PyOpenGL, for visualization in ikdbtest_gl.py
+IKDB requires Python and the following Python packages:
+- Scipy
+- Scikit-learn
+- Klampt Python API (http://klampt.org) version 0.6.X, 0.7.X, and 0.8.X supported
+- Optional packages:
+  - PyOpt (http://www.pyopt.com), a local optimization package 
+  - DIRECT (https://pypi.python.org/pypi/DIRECT/), another global optimizer used
+    for comparison.  (Testing indicates performance is not competitive.)
+  - PyOpenGL, for visualization in ikdbtest_gl.py
 
-To install Klampt, please follow the installation tutorial for your system at
-http://motion.pratt.duke.edu/klampt/tutorial_install.html
+Simply use `pip install klampt scipy sklearn PyOpenGL` to install most of these packages.
+PyOpt and DIRECT should be installed from scratch.
+
+For more Klamp't install options, follow the installation tutorial for your system at
+[http://motion.cs.illinois.edu/klampt/tutorial_install.html](http://motion.cs.illinois.edu/klampt/tutorial_install.html)
 
 ## 3. Concepts ##
 
@@ -72,12 +78,12 @@ in the same form as (1).  Specifically, we define what is known as a P-parameter
 
 >    z in R^m
 
-that may affect the cost function and constraints of (1).  In other words, we have
+that may affect the cost function and constraints of (1).  In other words, we have:
 
->   f(q) == f(q,z)
->   constraint1 == constraint1(z)
->   ...
->   constraintr == constraintr(z)
+>     f(q) == f(q,z)
+>     constraint1 == constraint1(z) 
+>     ...
+>     constraintr == constraintr(z)
 
 (and in general, qmin, qmax, and F may also vary as a function of z as well).
 
@@ -103,15 +109,17 @@ replacement for the Klamp't ik module.  All of the functions of the ik API (obje
 solve, solve_nearby, etc) are duplicated in ikdb. Code for running a background running,
 automatically learning IKDB is as follows:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
 import ikdb
+import klampt
+import time
 
-world = WorldModel()
+world = klampt.WorldModel()
 #TODO: load the robot or world file that you will be using
 world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
-functionfactory.registerDefaultFunctions()
-functionfactory.registerCollisionFunction(world)
-functionfactory.registerJointRangeCostFunction(world.robot(0))
+ikdb.functionfactory.registerDefaultFunctions()
+ikdb.functionfactory.registerCollisionFunction(world)
+ikdb.functionfactory.registerJointRangeCostFunction(world.robot(0))
 
 robot = world.robot(0)
 while (True):
@@ -125,40 +133,42 @@ while (True):
   #run the solver
   soln = ikdb.solve(problem,activeDofs=None,feasibilityCheck='collisionFree',costFunction='jointRangeCost')
   if soln is not None:
-      print "Got a solution",soln
+      print("Got a solution",soln)
 
 #if you want to auto-populate the database, run the following lines:
 time.sleep(600)
 ikdb.flush()
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
-Please consult the Klamp't IK tutorial http://motion.pratt.duke.edu/klampt/tutorial_ik.html or
-the klampt.ik module documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/ik_8py.html
+Please consult the [Klamp't IK manual](http://motion.cs.illinois.edu/klampt/pyklampt_docs/Manual-IK.html) or
+the [klampt.ik module documentation](http://motion.cs.illinois.edu/klampt/pyklampt_docs/klampt.model.ik.html)
 for more information about how to set up these objectives.
 
 The second easiest way to start is to use the ManagedIKDatabase class.  Here
 you get to configure the folder in which the solver saves its database, control
 the background loop, etc. Code is as follows:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
 import ikdb
+import klampt
+import time
 
-world = WorldModel()
+world = klampt.WorldModel()
 #TODO: load the robot or world file that you will be using
 world.loadFile(###[URDF, Klamp't .rob, or Klamp't .xml file]###)
-functionfactory.registerDefaultFunctions()
-functionfactory.registerCollisionFunction(world)
-functionfactory.registerJointRangeCostFunction(world.robot(0))
+ikdb.functionfactory.registerDefaultFunctions()
+ikdb.functionfactory.registerCollisionFunction(world)
+ikdb.functionfactory.registerJointRangeCostFunction(world.robot(0))
 
 #create the IKDB, with optional folder to save in
-db = ManagedIKDatabase(world.robot(0),###[folder]###)
+db = ikdb.ManagedIKDatabase(world.robot(0),###[folder]###)
 #optional: start the background thread.  It will automatically learn
 #a database as it runs.  If you don't start it, then IKDB will learn
 #only from the examples that you give it.
 db.startBackgroundLoop()
 while (True):
 	#generate a new problem
-    problem = IKProblem()
+    problem = ikdb.IKProblem()
     #TODO: make a list of Klamp't IKObjective objects, called objectives
     for obj in objectives:
     	problem.addConstraint(objective)
@@ -169,10 +179,10 @@ while (True):
     #run the solver
     soln = db.solve(problem)
     if soln is not None:
-        print "Got a solution",soln
+        print("Got a solution",soln)
 #this is not strictly necessary, but you may want to do it just to be nice...
 db.stopBackgroundLoop()
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
 The ManagedIKDatabase will keep learning and periodically saving to disk, and the
 learned database will be loaded up again next time you start the program.
@@ -181,12 +191,12 @@ The ManagedIKDatabase class automatically populates one or more IKDatabase objec
 determines feature spaces from the IKProblems that you generate.  Doing this dynamically does 
 use a little bit of overhead.  Instead, if you are solving a group of IKProblems that have
 the same characteristics, it is a bit faster to call
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
   sub_db = db.getDatabase(problem[0])
   db.solveWithDatabase(problem[0],sub_db)
   ...
   db.solveWithDatabase(problem[N],sub_db)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 Note that this needs to be done AFTER database training.
 
 You can also generate and evaluate
@@ -212,22 +222,22 @@ this functionality.  Perhaps the easiest way to learn how to use it is through a
 
 Consider a simple cost function penalizing the third joint's deviation from 0.5:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
   def my_simple_cost_fn(q):
 	  return (q[2] - 0.5) ** 2
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
 To register this, call:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
    functionfactory.registerFunction('my_cost',my_simple_cost_fn,'q')
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
 Now it is ready to use in your IKProblem by calling
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
   problem.setCostFunction('my_cost',None)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
 where the second argument tells the problem that your function takes no arguments
 except for q.  This is assumed by default, so you can eliminate the None argument.
@@ -269,9 +279,9 @@ The key unit is the IKProblem, which defines an optimal, collision free IK probl
 This class is defined in the ikdb.ikproblem module, and stores the list of IK constraints,
 an optional feasibility test, and an optional cost function to be minimized.  
 
-Each IK constraint is defined as a Klamp't IKObjective object. Please consult the Klamp't IK
-tutorial http://motion.pratt.duke.edu/klampt/tutorial_ik.html or the klampt.ik module
-documentation at http://motion.pratt.duke.edu/klampt/pyklampt_docs/ik_8py.html
+Each IK constraint is defined as a Klamp't IKObjective object. 
+Please consult the [Klamp't IK manual](http://motion.cs.illinois.edu/klampt/pyklampt_docs/Manual-IK.html) or
+the [klampt.ik module documentation](http://motion.cs.illinois.edu/klampt/pyklampt_docs/klampt.model.ik.html)
 for more information about how to set up these objectives.
 
 IKProblem must be a JSON serializable class using the methods toJson and fromJson.  As a result
@@ -290,7 +300,7 @@ the hood, read on.
 
 A simple problem with two IK objectives and no cost function will be defined in JSON format
 like this:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```python
 {
   type:"IKProblem",
   objectives:[
@@ -312,7 +322,7 @@ like this:
     }
   ]
 }
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
 
 Each feature is a path through this hierarchical data structure.  That is, it is a list
 of indices that will be traversed down the hierarchy.  As an example, if you wish toindicate
@@ -345,24 +355,33 @@ and the feature mapping will be smart and provide a length 6 feature vector for 
 * ikdbtest_gl.py: trains a database from dynamically-defined IK problems in a visualization
   GUI (requires PyOpenGL) 
 
-Examples:
+**Examples:**
 
->   (basic test)
->   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob 
+These assume that [Klampt-examples](https://github.com/krishauser/Klampt-examples) is downloaded to
+your home directory.  Try `cd ~; git clone https://github.com/krishauser/Klampt-examples`.
 
->   (tests against random-restart)
->   python ikdbtest_console.py --train 100000 --test 1000 --robot [KLAMPT_PATH]/data/robots/tx90ball.rob -k 1 -k 5 -k 10 --RR 1 --RR 10 --RR 100
+(basic test)
 
->   (two links constrained)
->   python ikdbtest_console.py --train 100000 --test 1000 --link left_gripper --link right_gripper --robot [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_console.py --train 100000 --test 1000 --robot ~/Klampt-examples/data/robots/tx90ball.rob 
 
->   (visualization and background training)
->   python ikdbtest_gl.py [KLAMPT_PATH]/data/robots/baxter_col.rob 
+(tests against random-restart)
 
->   (simplified interface and background training)
->   python ikdbtest_simple.py -r [KLAMPT_PATH]/data/robots/baxter_col.rob 
+>   python ikdbtest_console.py --train 100000 --test 1000 --robot ~/Klampt-examples/data/robots/tx90ball.rob -k 1 -k 5 -k 10 --RR 1 --RR 10 --RR 100
+
+(two links constrained)
+
+>   python ikdbtest_console.py --train 100000 --test 1000 --link left_gripper --link right_gripper --robot ~/Klampt-examples/data/robots/baxter_col.rob 
+
+(visualization and background training)
+
+>   python ikdbtest_gl.py ~/Klampt-examples/data/robots/baxter_col.rob 
+
+(simplified interface and background training)
+
+>   python ikdbtest_simple.py ~/Klampt-examples/data/robots/baxter_col.rob 
 
 ## 5. Version history ##
 
 - 0.1 (5/16/2016) - initial release
 - 0.2 (11/24/2016) - revision for TRO release.  Added more documentation, ability to handle soft constraints, and Klampt 0.7 support.
+- 0.3 (1/15/2020) - Updated to be compatible with Python 2/3. Works with Klampt 0.8.x
